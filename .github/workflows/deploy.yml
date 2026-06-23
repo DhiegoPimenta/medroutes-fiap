@@ -2,7 +2,7 @@ name: Build, Test e Deploy MedRoutes
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 
 env:
@@ -34,7 +34,7 @@ jobs:
     name: Deploy no Azure Container Apps
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
 
