@@ -17,11 +17,11 @@
 $ErrorActionPreference = "Stop"
 
 $ENVIRONMENT_NAME  = if ($env:ENVIRONMENT_NAME)   { $env:ENVIRONMENT_NAME }   else { "medroutes" }
-$LOCATION          = if ($env:LOCATION)            { $env:LOCATION }           else { "brazilsouth" }
+$LOCATION          = if ($env:LOCATION)            { $env:LOCATION }           else { "eastus2" }
 $RESOURCE_GROUP    = if ($env:RESOURCE_GROUP_NAME) { $env:RESOURCE_GROUP_NAME } else { "rg-$ENVIRONMENT_NAME" }
 $ANTHROPIC_API_KEY = if ($env:ANTHROPIC_API_KEY)   { $env:ANTHROPIC_API_KEY }   else { "" }
 $DEPLOYMENT_NAME   = "medroutes-$(Get-Date -Format 'yyyyMMddHHmmss')"
-$SUBSCRIPTION_ID   = "8a0dddf3-92d5-41de-875b-9985487429d5"
+$SUBSCRIPTION_ID   = "a09cd1e5-d2ef-4d8e-97e2-83082370a865"
 
 # garante que rodamos da raiz do projeto
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path

@@ -7,7 +7,7 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: rg-medroutes
-  AZURE_LOCATION: brazilsouth
+  AZURE_LOCATION: eastus2
   ACR_IMAGE_NAME: medroutes
 
 jobs:
@@ -38,44 +38,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Login no Azure (OIDC)
+      - name: Login no Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
 
-      - name: Validar infraestrutura (what-if)
-        run: |
-          az deployment sub what-if \
-            --name medroutes-ci-${{ github.run_number }} \
-            --location ${{ env.AZURE_LOCATION }} \
-            --template-file infra/main.bicep \
-            --parameters environmentName=medroutes location=${{ env.AZURE_LOCATION }} resourceGroupName=${{ env.AZURE_RESOURCE_GROUP }}
-
-      - name: Aplicar infraestrutura (Bicep)
-        run: |
-          az deployment sub create \
-            --name medroutes-ci-${{ github.run_number }} \
-            --location ${{ env.AZURE_LOCATION }} \
-            --template-file infra/main.bicep \
-            --parameters environmentName=medroutes location=${{ env.AZURE_LOCATION }} resourceGroupName=${{ env.AZURE_RESOURCE_GROUP }} anthropicApiKey=${{ secrets.ANTHROPIC_API_KEY }}
-
-      - name: Obter login server do ACR
+      - name: Obter nome do ACR
         id: acr
         run: |
-          LOGIN_SERVER=$(az deployment sub show --name medroutes-ci-${{ github.run_number }} --query "properties.outputs.containerRegistryLoginServer.value" -o tsv)
+          ACR_NAME=$(az acr list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[0].name" -o tsv)
+          LOGIN_SERVER=$(az acr show --name $ACR_NAME --query "loginServer" -o tsv)
+          echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
           echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
 
-      - name: Build e push da imagem (sem chaves de admin, via az acr build)
+      - name: Login no ACR via Docker
         run: |
-          az acr build \
-            --registry ${{ steps.acr.outputs.login_server }} \
-            --image ${{ env.ACR_IMAGE_NAME }}:${{ github.sha }} \
-            --image ${{ env.ACR_IMAGE_NAME }}:latest \
-            .
+          az acr update --name ${{ steps.acr.outputs.acr_name }} --admin-enabled true
+          ACR_PASSWORD=$(az acr credential show --name ${{ steps.acr.outputs.acr_name }} --query "passwords[0].value" -o tsv)
+          echo $ACR_PASSWORD | docker login ${{ steps.acr.outputs.login_server }} \
+            --username ${{ steps.acr.outputs.acr_name }} --password-stdin
+          az acr update --name ${{ steps.acr.outputs.acr_name }} --admin-enabled false
 
-      - name: Atualizar Container App
+      - name: Build e push da imagem Docker
+        run: |
+          docker build -t ${{ steps.acr.outputs.login_server }}/${{ env.ACR_IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ steps.acr.outputs.login_server }}/${{ env.ACR_IMAGE_NAME }}:${{ github.sha }} \
+                     ${{ steps.acr.outputs.login_server }}/${{ env.ACR_IMAGE_NAME }}:latest
+          docker push ${{ steps.acr.outputs.login_server }}/${{ env.ACR_IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ steps.acr.outputs.login_server }}/${{ env.ACR_IMAGE_NAME }}:latest
+
+      - name: Instalar extensao containerapp
+        run: az extension add --name containerapp --upgrade -y
+
+      - name: Atualizar Container App com imagem real
         run: |
           az containerapp update \
             --name ca-medroutes \

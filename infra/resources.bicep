@@ -26,10 +26,15 @@ param anthropicModel string
 @description('Tag/versao da imagem do container a ser implantada.')
 param containerImageTag string = 'latest'
 
+@description('Usar imagem placeholder no primeiro deploy (antes do build).')
+param usePlaceholderImage bool = true
+
+var containerImage = usePlaceholderImage ? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' : '${containerRegistry.properties.loginServer}/medroutes:${containerImageTag}'
+
 // sufixo curto e deterministico para garantir nomes globais unicos (ACR e Key Vault)
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var acrName = toLower(replace('acr${environmentName}${uniqueSuffix}', '-', ''))
-var keyVaultName = toLower('kv-${environmentName}-${take(uniqueSuffix, 6)}')
+var keyVaultName = 'kv-mdr-fiap-tc2'
 var logAnalyticsName = 'log-${environmentName}'
 var containerAppEnvName = 'cae-${environmentName}'
 var containerAppName = 'ca-${environmentName}'
@@ -173,7 +178,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
       containers: [
         {
           name: 'medroutes'
-          image: '${containerRegistry.properties.loginServer}/medroutes:${containerImageTag}'
+          image: containerImage
           resources: {
             cpu: json('1.0')
             memory: '2Gi'
