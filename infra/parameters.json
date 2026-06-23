@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "medroutes"
+    },
+    "location": {
+      "value": "brazilsouth"
+    },
+    "resourceGroupName": {
+      "value": "rg-medroutes"
+    },
+    "anthropicModel": {
+      "value": "claude-sonnet-4-6"
+    },
+    "anthropicApiKey": {
+      "value": ""
+    }
+  }
+}
