@@ -57,7 +57,6 @@ jobs:
           ACR_PASSWORD=$(az acr credential show --name ${{ steps.acr.outputs.acr_name }} --query "passwords[0].value" -o tsv)
           echo $ACR_PASSWORD | docker login ${{ steps.acr.outputs.login_server }} \
             --username ${{ steps.acr.outputs.acr_name }} --password-stdin
-          az acr update --name ${{ steps.acr.outputs.acr_name }} --admin-enabled false
 
       - name: Build e push da imagem Docker
         run: |
@@ -66,6 +65,10 @@ jobs:
                      ${{ steps.acr.outputs.login_server }}/${{ env.ACR_IMAGE_NAME }}:latest
           docker push ${{ steps.acr.outputs.login_server }}/${{ env.ACR_IMAGE_NAME }}:${{ github.sha }}
           docker push ${{ steps.acr.outputs.login_server }}/${{ env.ACR_IMAGE_NAME }}:latest
+
+      - name: Desabilitar admin ACR
+        if: always()
+        run: az acr update --name ${{ steps.acr.outputs.acr_name }} --admin-enabled false
 
       - name: Instalar extensao containerapp
         run: az extension add --name containerapp --upgrade -y
