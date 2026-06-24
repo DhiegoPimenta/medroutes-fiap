@@ -1,269 +1,544 @@
-# MedRoutes
+# MedRoutes 🚑
 
-Sistema de otimizacao de rotas para distribuicao de medicamentos e insumos, desenvolvido como Tech Challenge da Fase 2 da pos-graduacao em IA para Devs (FIAP) — **Projeto 2: Otimizacao de Rotas para Distribuicao de Medicamentos e Insumos**.
+> **Tech Challenge — Fase 2 | IA para Devs | FIAP PosTech**
+> Projeto 2: Otimização de Rotas para Distribuição de Medicamentos e Insumos
 
-O sistema cadastra entregas e veiculos, otimiza as rotas com um **Algoritmo Genetico implementado do zero**, visualiza o resultado em um mapa interativo e usa a **API da Anthropic (Claude)** para gerar instrucoes para motoristas, relatorios de eficiencia e respostas a perguntas em linguagem natural sobre as rotas.
+Sistema completo de otimização de rotas para distribuição de medicamentos e insumos hospitalares. Resolve o **Vehicle Routing Problem (VRP)** com um **Algoritmo Genético implementado do zero**, visualiza as rotas em mapa interativo e usa a **API da Anthropic (Claude Sonnet)** para gerar instruções para motoristas, relatórios de eficiência e responder perguntas em linguagem natural.
 
-## Indice
+🌐 **Demo em produção:** https://ca-medroutes.ambitiousstone-87ab2c0d.eastus2.azurecontainerapps.io
 
-- [Visao geral](#visao-geral)
-- [Arquitetura](#arquitetura)
-- [Stack tecnologica](#stack-tecnologica)
-- [Estrutura do projeto](#estrutura-do-projeto)
-- [Como executar localmente](#como-executar-localmente)
-- [Algoritmo Genetico: decisoes tecnicas](#algoritmo-genetico-decisoes-tecnicas)
+---
+
+## Índice
+
+- [Contexto e objetivo](#contexto-e-objetivo)
+- [Como funciona — fluxo completo](#como-funciona--fluxo-completo)
+- [Algoritmo Genético — detalhes técnicos](#algoritmo-genético--detalhes-técnicos)
+- [Integração com Claude (LLM)](#integração-com-claude-llm)
 - [Experimentos comparativos](#experimentos-comparativos)
-- [Integracao com Claude](#integracao-com-claude)
-- [Testes automatizados](#testes-automatizados)
-- [Deploy no Azure](#deploy-no-azure)
-- [Limitacoes conhecidas](#limitacoes-conhecidas)
+- [Stack tecnológica](#stack-tecnológica)
+- [Arquitetura do sistema](#arquitetura-do-sistema)
+- [Infraestrutura no Azure (IaC com Bicep)](#infraestrutura-no-azure-iac-com-bicep)
+- [CI/CD — GitHub Actions](#cicd--github-actions)
+- [Como rodar localmente](#como-rodar-localmente)
+- [Como rodar os testes](#como-rodar-os-testes)
+- [Como rodar os experimentos](#como-rodar-os-experimentos)
+- [Como fazer deploy no Azure](#como-fazer-deploy-no-azure)
+- [Estrutura de pastas](#estrutura-de-pastas)
+- [Limitações conhecidas](#limitações-conhecidas)
 
-## Visao geral
+---
 
-Um centro de distribuicao precisa entregar medicamentos criticos e insumos regulares para diversos enderecos, usando uma frota limitada de veiculos com capacidade de carga e autonomia maximas. O MedRoutes resolve esse problema de roteamento de veiculos (VRP - *Vehicle Routing Problem*) priorizando entregas criticas, respeitando restricoes de capacidade/autonomia, e minimizando a distancia total percorrida.
+## Contexto e objetivo
 
-Fluxo de uso (via interface Streamlit):
+Um sistema hospitalar precisa entregar medicamentos críticos e insumos regulares para múltiplos endereços, usando uma frota de veículos com capacidade de carga e autonomia máxima definidas. O problema é uma variante do clássico **Travelling Salesman Problem (TSP)** estendido para múltiplos veículos: o **VRP (Vehicle Routing Problem)**.
 
-1. Definir o endereco do deposito (origem/retorno de todas as rotas).
-2. Cadastrar entregas (endereco, tipo — medicamento critico ou insumo regular, peso/volume).
-3. Configurar a frota (numero de veiculos, capacidade de carga, autonomia maxima).
-4. Rodar o Algoritmo Genetico e visualizar as rotas otimizadas no mapa.
-5. Usar o assistente Claude para gerar instrucoes por motorista, relatorio de eficiencia, ou perguntar sobre as rotas em linguagem natural.
+**Desafios reais modelados:**
+- Medicamentos críticos devem ser entregues **antes** de insumos regulares na mesma rota.
+- Veículos têm **capacidade de carga máxima** (kg) e **autonomia máxima** (km).
+- A frota pode ter **múltiplos veículos** simultaneamente.
+- As rotas devem partir e retornar ao **depósito central**.
 
-## Arquitetura
+**Objetivo:** minimizar a distância total percorrida pela frota, respeitando todas as restrições, priorizando entregas críticas.
 
-```mermaid
-flowchart TB
-    subgraph UI["Interface (Streamlit)"]
-        A[Cadastro de entregas e veiculos]
-        B[Painel de otimizacao]
-        C[Mapa Folium]
-        D[Assistente Claude]
-    end
+---
 
-    subgraph Core["Nucleo de dominio"]
-        E[Geocoding Service<br/>Nominatim/OpenStreetMap]
-        F[Algoritmo Genetico<br/>selecao, crossover OX, mutacao]
-        G[Funcao Fitness<br/>distancia + prioridade + penalidades]
-        H[Modelos de dominio<br/>Delivery, Vehicle, RoutingProblem]
-    end
+## Como funciona — fluxo completo
 
-    subgraph External["Servicos externos"]
-        I[(Nominatim API)]
-        J[(Claude API - Anthropic)]
-    end
-
-    A --> E --> I
-    A --> H
-    B --> F
-    F --> G
-    F --> H
-    F --> C
-    D --> J
-    C --> D
-
-    subgraph Cloud["Azure (producao)"]
-        K[Container Registry]
-        L[Container Apps Environment]
-        M[Container App - Streamlit]
-        N[Key Vault - ANTHROPIC_API_KEY]
-        O[Managed Identity]
-    end
-
-    M -.->|pull imagem via identity| K
-    M -.->|le segredo via identity| N
-    O -.-> K
-    O -.-> N
+```
+Usuário define:
+  ├── Endereço do depósito (origem/retorno de todas as rotas)
+  ├── Lista de entregas (endereço, tipo, peso)
+  └── Configuração da frota (nº de veículos, capacidade, autonomia)
+         │
+         ▼
+Geocodificação (Nominatim/OpenStreetMap)
+  └── Converte endereços em coordenadas (lat, lon)
+         │
+         ▼
+Algoritmo Genético (VRP)
+  ├── Inicializa população de rotas aleatórias
+  ├── Evolui por N gerações (seleção → crossover → mutação → elitismo)
+  └── Retorna melhor rota encontrada + histórico de convergência
+         │
+         ▼
+Visualização (Folium + Leaflet)
+  └── Mapa interativo com rotas por veículo em cores diferentes
+         │
+         ▼
+Assistente Claude (Anthropic API)
+  ├── Instruções detalhadas por motorista
+  ├── Relatório de eficiência (comparativo com baseline aleatório)
+  └── Q&A em linguagem natural sobre as rotas
 ```
 
-### Representacao do problema (VRP) escolhida pelo Algoritmo Genetico
+### Interface Streamlit (passo a passo)
 
-O cromossomo e um **"giant tour"**: uma permutacao com os indices de *todas* as entregas, sem marcar explicitamente a separacao entre veiculos. A decodificacao (`decode_chromosome`) percorre essa permutacao e distribui as entregas entre os veiculos disponiveis respeitando a capacidade de carga, abrindo o proximo veiculo quando o atual nao comporta mais peso.
+1. **Sidebar — Depósito:** informe o endereço de origem (ex.: `Av. Paulista, 1000, São Paulo`).
+2. **Sidebar — Entregas:** adicione entregas com endereço, tipo (`Medicamento crítico` ou `Insumo regular`) e peso.
+3. **Sidebar — Veículos:** configure número de veículos, capacidade de carga (kg) e autonomia (km).
+4. **Painel principal — Otimizar rotas:** ajuste os hiperparâmetros do AG (população, gerações, taxa de mutação) e clique em **Otimizar rotas**.
+5. **Resultado:** distância total, veículos utilizados, tempo de otimização e mapa interativo.
+6. **Assistente Claude:** três abas — instruções por motorista, relatório de eficiência e Q&A.
 
-Essa escolha foi deliberada: permite reutilizar operadores classicos de permutacao (Order Crossover, mutacao por inversao) sem precisar inventar operadores especificos para multiplas rotas, mantendo a implementacao simples e correta.
+---
 
-## Stack tecnologica
+## Algoritmo Genético — detalhes técnicos
 
-| Camada | Tecnologia |
+Implementado **do zero** em `app/genetic/`, sem bibliotecas de AG (DEAP ou similares), conforme exigido pelo desafio.
+
+### Representação cromossômica — Giant Tour
+
+O cromossomo é uma **permutação de índices** de todas as entregas. Exemplo com 5 entregas e 2 veículos:
+
+```
+Cromossomo: [2, 0, 4, 1, 3]
+             ↑  ↑  ↑  ↑  ↑
+        índices das entregas em ordem de visita
+
+Decodificação (greedy por capacidade):
+  Veículo 0: entrega[2] → entrega[0] → entrega[4]  (até encher capacidade)
+  Veículo 1: entrega[1] → entrega[3]               (resto)
+```
+
+**Por que Giant Tour?** Permite reutilizar operadores clássicos de permutação (OX, inversão) sem inventar operadores específicos para múltiplas rotas, mantendo a implementação simples, correta e bem testada.
+
+### Decodificação (`decode_chromosome`)
+
+Percorre a permutação e distribui entregas entre veículos respeitando a capacidade de carga. Se um veículo não comporta a próxima entrega, avança para o próximo. Violações são penalizadas na função fitness.
+
+### Operadores genéticos (`app/genetic/operators.py`)
+
+| Operador | Implementação | Descrição |
+|---|---|---|
+| **Seleção por torneio** | `tournament_selection` | Sorteia `tournament_size` indivíduos, seleciona o de menor fitness. Controla pressão seletiva. |
+| **Crossover OX** | `order_crossover` | Copia segmento contíguo de um pai; preenche o restante com genes do outro pai na ordem que aparecem. Garante permutação válida. |
+| **Mutação por inversão** | `inversion_mutation` | Inverte um subtrecho aleatório do cromossomo com probabilidade `mutation_rate`. Preserva validade. |
+| **Elitismo** | no loop principal | Os `elitism_count` melhores indivíduos são copiados integralmente para a próxima geração. Fitness nunca piora entre gerações. |
+
+### Função fitness (`evaluate_fitness`)
+
+**Minimização** — quanto menor, melhor. Composta por 4 termos ponderados:
+
+```
+fitness = w_dist × distância_total
+        + w_prioridade × penalidade_prioridade
+        + w_capacidade × kg_excedentes
+        + w_autonomia  × km_excedentes
+```
+
+| Componente | Peso padrão | O que mede |
+|---|---|---|
+| `distância_total` | 1.0 | Soma das distâncias Haversine de todas as rotas (depósito → paradas → depósito) |
+| `penalidade_prioridade` | 5.0 | Posição normalizada de entregas críticas na rota (incentiva entregá-las primeiro) |
+| `penalidade_capacidade` | 1000.0 | Kg excedentes acima da capacidade do veículo (fortemente penalizado) |
+| `penalidade_autonomia` | 1000.0 | Km excedentes acima da autonomia do veículo (fortemente penalizado) |
+
+### Cálculo de distância — Haversine
+
+```python
+def haversine_distance_km(coord_a, coord_b):
+    # considera a curvatura da Terra
+    # adequado para distâncias urbanas em linha reta
+    # resultado em quilômetros
+```
+
+### Hiperparâmetros configuráveis (`GeneticAlgorithmConfig`)
+
+| Parâmetro | Padrão | Descrição |
+|---|---|---|
+| `population_size` | 80 | Número de indivíduos por geração |
+| `num_generations` | 150 | Número de gerações |
+| `mutation_rate` | 0.15 | Probabilidade de mutação por inversão |
+| `tournament_size` | 3 | Tamanho do torneio na seleção |
+| `elitism_count` | 2 | Indivíduos preservados por elitismo |
+| `random_seed` | None | Semente para reprodutibilidade |
+
+---
+
+## Integração com Claude (LLM)
+
+Implementada em `app/llm/claude_client.py` usando o **SDK oficial da Anthropic**.
+
+**Modelo:** `claude-sonnet-4-6` (configurável via variável de ambiente `ANTHROPIC_MODEL`)
+
+### Funcionalidades
+
+#### 1. Instruções por motorista (`generate_driver_instructions`)
+
+Gera em português, para cada veículo:
+- Ordem das paradas com endereço e peso
+- Alertas em destaque para medicamentos críticos
+- Lembrete de retorno ao depósito
+
+**Prompt de sistema:**
+> "Você é um assistente de logística que escreve instruções claras, objetivas e amigáveis para motoristas de entrega de medicamentos e insumos hospitalares."
+
+#### 2. Relatório de eficiência (`generate_efficiency_report`)
+
+Compara a rota otimizada com um baseline aleatório e gera parágrafo executivo com:
+- Distância otimizada vs. baseline
+- Economia em km e %
+- Número de veículos e entregas críticas
+
+**Prompt de sistema:**
+> "Você é um analista de logística que resume métricas de eficiência de roteamento de forma clara para gestores não técnicos."
+
+#### 3. Q&A sobre as rotas (`answer_question_about_routes`)
+
+Responde perguntas em linguagem natural como:
+- *"Qual entrega é mais urgente?"*
+- *"Qual veículo está mais sobrecarregado?"*
+- *"Quantas entregas críticas temos?"*
+
+Contexto injetado no prompt: resumo de cada veículo com entregas, peso atual vs. capacidade, distância vs. autonomia.
+
+### Segurança da chave
+
+A `ANTHROPIC_API_KEY` é lida **exclusivamente** de variável de ambiente — nunca hardcoded. Em produção, é lida do **Azure Key Vault** via Managed Identity.
+
+---
+
+## Experimentos comparativos
+
+Executados via `experiments/run_experiments.py` sobre cenário sintético fixo: **25 entregas, 4 veículos, 120 gerações**, mesmo `random_seed=42` para comparação justa.
+
+### Resultados
+
+| Config | Descrição | Pop. | Mutação | Torneio | Fitness | Dist. (km) | Tempo (s) | Melhor geração |
+|---|---|---|---|---|---|---|---|---|
+| **A** | Pop. pequena, mutação baixa | 30 | 0.05 | 3 | 5490.37 | 305.71 | 0.47 | 115 |
+| **B** | Pop. grande, mutação baixa | 150 | 0.05 | 3 | 358.64 | 265.13 | 2.25 | 82 |
+| **C** ⭐ | Pop. média, mutação alta | 80 | 0.40 | 3 | **322.75** | **234.41** | **1.23** | 87 |
+| **D** | Pop. média, torneio maior | 80 | 0.10 | 6 | 330.84 | 241.44 | 1.62 | 90 |
+
+### Conclusões
+
+- **Config A** convergiu para um ótimo local muito ruim — população pequena limita diversidade genética e mutação baixa não compensa, resultando em fitness ~17× pior.
+- **Config C** obteve o **melhor resultado**: mutação alta (0.40) ajuda a escapar de ótimos locais sem exigir população grande. Melhor custo-benefício.
+- **Config B** chegou perto do ótimo, mas com quase 2× o tempo de Config C — retornos decrescentes de aumentar população com mutação baixa.
+- **Melhor configuração para produção:** população média (80) + mutação alta (0.40) + torneio padrão (3).
+
+---
+
+## Stack tecnológica
+
+### Backend / Core
+
+| Tecnologia | Versão | Função |
+|---|---|---|
+| **Python** | 3.11 | Linguagem principal |
+| **Poetry** | latest | Gerenciamento de dependências e ambiente virtual |
+| **Streamlit** | ^1.38 | Interface web interativa |
+| **Folium** | ^0.17 | Visualização de mapas (Leaflet.js) |
+| **streamlit-folium** | ^0.23 | Integração Folium ↔ Streamlit |
+| **geopy** | ^2.4 | Geocodificação via Nominatim/OpenStreetMap |
+| **anthropic** | ^0.54 | SDK oficial da Anthropic para Claude API |
+| **pandas** | ^2.2 | Manipulação de dados tabulares |
+| **numpy** | ^1.26 | Operações numéricas |
+| **pydantic** | ^2.8 | Validação de modelos de dados |
+| **python-dotenv** | ^1.0 | Leitura de variáveis de ambiente (.env) |
+
+### LLM
+
+| Serviço | Modelo | Uso |
+|---|---|---|
+| **Anthropic Claude API** | `claude-sonnet-4-6` | Instruções por motorista, relatório de eficiência, Q&A |
+
+### Geocodificação
+
+| Serviço | Protocolo | Custo |
+|---|---|---|
+| **Nominatim (OpenStreetMap)** | HTTP REST | Gratuito (limite: ~1 req/s) |
+
+### Testes
+
+| Ferramenta | Versão | Uso |
+|---|---|---|
+| **pytest** | ^8.3 | Framework de testes |
+| **pytest-mock** | ^3.14 | Mock de dependências externas |
+| **pytest-cov** | ^5.0 | Cobertura de código |
+
+### Infraestrutura e DevOps
+
+| Tecnologia | Uso |
 |---|---|
-| Interface | Streamlit |
-| Visualizacao de mapas | Folium + streamlit-folium |
-| Geocodificacao | Nominatim (OpenStreetMap), via geopy |
-| Otimizacao | Algoritmo Genetico implementado do zero (sem DEAP ou similares) |
-| IA generativa | Claude API (`claude-sonnet-4-6`), via SDK `anthropic` |
-| Gerenciamento de dependencias | Poetry |
-| Testes | pytest + pytest-mock |
-| Containerizacao | Docker |
-| Infraestrutura como codigo | Bicep |
-| Cloud | Azure Container Apps, Azure Container Registry, Azure Key Vault |
-| CI/CD | GitHub Actions |
+| **Docker** | Containerização da aplicação Streamlit |
+| **Azure Container Registry (ACR)** | Repositório privado de imagens Docker |
+| **Azure Container Apps** | Plataforma serverless para execução do container |
+| **Azure Key Vault** | Armazenamento seguro da ANTHROPIC_API_KEY |
+| **Azure Managed Identity** | Autenticação sem credenciais entre serviços Azure |
+| **Azure Log Analytics** | Coleta e análise de logs do Container App |
+| **Bicep** | IaC (Infrastructure as Code) para provisionamento Azure |
+| **GitHub Actions** | CI/CD: testes → build Docker → deploy automático |
 
-## Estrutura do projeto
+---
+
+## Arquitetura do sistema
 
 ```
-medroutes/
-├── app/
-│   ├── main.py                 # Streamlit entry point
-│   ├── geocoding.py             # Geocodificacao via Nominatim
-│   ├── genetic/
-│   │   ├── algorithm.py         # Loop principal do AG (GeneticAlgorithm)
-│   │   ├── operators.py         # Selecao por torneio, crossover OX, mutacao por inversao
-│   │   └── fitness.py           # Decodificacao de cromossomo + funcao fitness
-│   ├── llm/
-│   │   └── claude_client.py     # Integracao com a API da Anthropic
-│   ├── maps/
-│   │   └── route_map.py         # Construcao do mapa Folium
-│   └── models/
-│       └── delivery.py          # Dataclasses: Delivery, Vehicle, DepotLocation, RoutingProblem
-├── experiments/
-│   ├── run_experiments.py       # Script de comparacao de configuracoes do AG
-│   └── results/                 # CSV e grafico de convergencia gerados
-├── infra/
-│   ├── main.bicep               # Entry point (escopo subscription)
-│   ├── resources.bicep          # Recursos do Resource Group
-│   ├── parameters.json          # Parametros de deploy
-│   └── deploy.sh                # Script de deploy (build, push, update)
-├── tests/                        # Suite pytest (35 testes)
-├── .github/workflows/deploy.yml # Pipeline CI/CD
-├── Dockerfile
-├── pyproject.toml
-└── .env.example
+┌─────────────────────────────────────────────────────────────┐
+│                    Usuário (browser)                        │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ HTTPS
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Azure Container Apps                           │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              Streamlit (porta 8501)                  │   │
+│  │                                                      │   │
+│  │  ┌──────────────┐    ┌──────────────────────────┐   │   │
+│  │  │  Interface   │    │   Algoritmo Genético     │   │   │
+│  │  │  (main.py)   │───▶│   (genetic/)             │   │   │
+│  │  └──────┬───────┘    └──────────────────────────┘   │   │
+│  │         │                                            │   │
+│  │  ┌──────▼───────┐    ┌──────────────────────────┐   │   │
+│  │  │  Geocoding   │───▶│   Nominatim API          │   │   │
+│  │  │  (geopy)     │    │   (OpenStreetMap)         │   │   │
+│  │  └──────┬───────┘    └──────────────────────────┘   │   │
+│  │         │                                            │   │
+│  │  ┌──────▼───────┐    ┌──────────────────────────┐   │   │
+│  │  │ Claude Client│───▶│   Anthropic API          │   │   │
+│  │  │  (llm/)      │    │   claude-sonnet-4-6       │   │   │
+│  │  └──────┬───────┘    └──────────────────────────┘   │   │
+│  │         │                                            │   │
+│  │  ┌──────▼───────┐                                   │   │
+│  │  │  Folium Map  │                                   │   │
+│  │  │  (maps/)     │                                   │   │
+│  │  └──────────────┘                                   │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  Managed Identity ──▶ Key Vault (ANTHROPIC_API_KEY)        │
+│  Managed Identity ──▶ Container Registry (pull imagem)     │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Como executar localmente
+---
 
-### Pre-requisitos
+## Infraestrutura no Azure (IaC com Bicep)
+
+Toda a infraestrutura está definida em `infra/` e pode ser provisionada com um único comando.
+
+### Recursos criados
+
+| Recurso | Nome | Função |
+|---|---|---|
+| Resource Group | `rg-medroutes` | Agrupa todos os recursos |
+| Container Registry | `acrmedroutes<hash>.azurecr.io` | Armazena a imagem Docker |
+| User-Assigned Managed Identity | `id-medroutes` | Autentica no ACR e Key Vault sem senhas |
+| Key Vault | `kv-mdr-fiap-tc2` | Guarda `ANTHROPIC_API_KEY` com segurança |
+| Log Analytics Workspace | `log-medroutes` | Coleta logs do Container App |
+| Container Apps Environment | `cae-medroutes` | Ambiente gerenciado para containers |
+| Container App | `ca-medroutes` | Executa o Streamlit (1–3 réplicas) |
+
+### Decisões de segurança
+
+- **Sem admin user no ACR:** autenticação via Managed Identity com role `AcrPull`.
+- **Key Vault com RBAC habilitado:** a API key é lida pelo Container App via Managed Identity (role `Key Vault Secrets User`) — nunca em texto plano.
+- **Purge protection ativado no Key Vault:** proteção contra deleção acidental.
+- **Soft delete habilitado:** recuperação de segredos por 90 dias.
+
+### Estrutura dos arquivos Bicep
+
+```
+infra/
+├── main.bicep        # Escopo: subscription — cria o Resource Group e chama o módulo
+├── resources.bicep   # Escopo: resource group — cria todos os recursos acima
+├── parameters.json   # Parâmetros de deploy (sem valores sensíveis)
+└── deploy.ps1        # Script PowerShell de deploy manual (Windows)
+```
+
+### Parâmetros do deploy
+
+| Parâmetro | Padrão | Descrição |
+|---|---|---|
+| `environmentName` | `medroutes` | Prefixo dos recursos |
+| `location` | `eastus2` | Região do Azure |
+| `resourceGroupName` | `rg-medroutes` | Nome do Resource Group |
+| `anthropicApiKey` | — | Chave da API (armazenada no Key Vault) |
+| `anthropicModel` | `claude-sonnet-4-6` | Modelo Claude |
+
+---
+
+## CI/CD — GitHub Actions
+
+Pipeline em `.github/workflows/deploy.yml` com dois jobs:
+
+### Job 1: `test`
+- Instala Python 3.11 + Poetry
+- Roda `pytest tests/ -v`
+- **Bloqueia o deploy se qualquer teste falhar**
+
+### Job 2: `deploy` (apenas na branch `main`/`master`, após `test` passar)
+1. Login no Azure via Service Principal
+2. Aplica infraestrutura Bicep (`az deployment sub create`)
+3. Obtém o login server do ACR
+4. Habilita admin temporário no ACR, faz login Docker, desabilita após o push
+5. `docker build` + `docker push` da imagem com tag `<git-sha>` e `latest`
+6. `az containerapp update` com a nova imagem
+
+**Secrets necessários no repositório GitHub:**
+
+| Secret | Descrição |
+|---|---|
+| `AZURE_CLIENT_ID` | Client ID do Service Principal |
+| `AZURE_CLIENT_SECRET` | Client Secret do Service Principal |
+| `AZURE_TENANT_ID` | Tenant ID do Azure AD |
+| `AZURE_SUBSCRIPTION_ID` | ID da subscription |
+| `ANTHROPIC_API_KEY` | Chave da API da Anthropic |
+
+---
+
+## Como rodar localmente
+
+### Pré-requisitos
 
 - Python 3.10+
-- [Poetry](https://python-poetry.org/)
+- [Poetry](https://python-poetry.org/docs/#installation)
+- Chave da API da Anthropic (obtenha em https://console.anthropic.com)
 
-### Passos
+### Instalação
 
 ```bash
-cd medroutes
+git clone https://github.com/DhiegoPimenta/medroutes-fiap.git
+cd medroutes-fiap
 
-# instalar dependencias
+# instala dependências
 poetry install
 
-# copiar e preencher variaveis de ambiente
+# cria o arquivo de variáveis de ambiente
 cp .env.example .env
-# editar .env e definir ANTHROPIC_API_KEY (opcional, so necessario para os
-# recursos de IA generativa)
+```
 
-# rodar a aplicacao Streamlit
+Edite o `.env` e preencha a chave:
+
+```env
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-sonnet-4-6
+NOMINATIM_USER_AGENT=medroutes-fiap-tech-challenge
+```
+
+### Executar
+
+```bash
 poetry run streamlit run app/main.py
 ```
 
-A aplicacao abre em `http://localhost:8501`. Cadastre o deposito, entregas e veiculos na barra lateral, depois clique em "Otimizar rotas".
+Acesse `http://localhost:8501`.
 
-### Rodando os testes
+### Exemplo de cenário de teste
+
+| Campo | Valor |
+|---|---|
+| Depósito | `Av. Paulista, 1000, São Paulo` |
+| Entrega 1 | `Rua da Consolação, 500, São Paulo` — Crítico — 2 kg |
+| Entrega 2 | `Av. Rebouças, 1200, São Paulo` — Regular — 8 kg |
+| Entrega 3 | `Rua Augusta, 800, São Paulo` — Crítico — 1.5 kg |
+| Entrega 4 | `Av. Brigadeiro Faria Lima, 2000, São Paulo` — Regular — 12 kg |
+| Entrega 5 | `Rua Oscar Freire, 300, São Paulo` — Crítico — 0.5 kg |
+| Veículo 1 | Capacidade: 15 kg — Autonomia: 50 km |
+| Veículo 2 | Capacidade: 20 kg — Autonomia: 80 km |
+
+---
+
+## Como rodar os testes
 
 ```bash
 poetry run pytest tests/ -v
 ```
 
-### Rodando os experimentos comparativos
+### Cobertura de testes (35 testes)
+
+| Arquivo | O que testa |
+|---|---|
+| `tests/test_fitness.py` | Haversine, `decode_chromosome`, `evaluate_fitness` (capacidade, prioridade) |
+| `tests/test_operators.py` | `tournament_selection`, `order_crossover` (validade da permutação), `inversion_mutation` |
+| `tests/test_algorithm.py` | Execução completa do AG, monotonicidade do fitness com elitismo |
+| `tests/test_models.py` | Validações das dataclasses (`Delivery`, `Vehicle`, `RoutingProblem`) |
+| `tests/test_geocoding.py` | Serviço de geocodificação com mock do Nominatim (sem chamadas reais) |
+| `tests/test_claude_client.py` | Integração Claude mockada (sem custo ou dependência de rede) |
+
+---
+
+## Como rodar os experimentos
 
 ```bash
 poetry run python experiments/run_experiments.py
 ```
 
-Gera `experiments/results/comparison.csv` e `experiments/results/convergence.png`.
+Gera em `experiments/results/`:
+- `comparison.csv` — tabela com métricas de todas as configurações
+- `convergence.png` — gráfico de convergência por configuração
 
-## Algoritmo Genetico: decisoes tecnicas
+---
 
-Implementado integralmente do zero em `app/genetic/`, sem bibliotecas de AG (DEAP ou similares), conforme exigido pelo desafio.
+## Como fazer deploy no Azure
 
-### Representacao cromossomica
+### Pré-requisitos
 
-Permutacao de indices das entregas (giant tour), decodificada em rotas multiplas por um algoritmo greedy que respeita a capacidade de cada veiculo (`app/genetic/fitness.py::decode_chromosome`).
+- Azure CLI instalado e autenticado (`az login --tenant <tenant>`)
+- Permissão de `Contributor` na subscription
 
-### Operadores (`app/genetic/operators.py`)
+### Deploy manual (Windows)
 
-- **Selecao por torneio** (`tournament_selection`): sorteia N individuos e seleciona o de menor fitness. O tamanho do torneio controla a pressao seletiva.
-- **Crossover OX — Order Crossover** (`order_crossover`): copia um segmento contiguo de um pai para o filho preservando posicoes, e completa as posicoes restantes com os genes do outro pai na ordem em que aparecem, garantindo uma permutacao valida (sem repeticoes ou omissoes).
-- **Mutacao por inversao** (`inversion_mutation`): inverte um subtrecho aleatorio do cromossomo com probabilidade `mutation_rate`, preservando a validade da permutacao.
-- **Elitismo**: os `elitism_count` melhores individuos de cada geracao sao preservados integralmente na proxima geracao (`app/genetic/algorithm.py`), garantindo que o melhor fitness nunca piore entre geracoes.
-
-### Funcao fitness (`app/genetic/fitness.py::evaluate_fitness`)
-
-Fitness = combinacao ponderada de quatro termos (menor valor = melhor solucao):
-
-1. **Distancia total** percorrida pela frota (Haversine entre paradas consecutivas, incluindo ida e volta ao deposito).
-2. **Prioridade de entregas criticas**: penaliza entregas de medicamento critico posicionadas tarde em sua rota (posicao normalizada x peso de prioridade do tipo), incentivando o AG a entrega-las primeiro.
-3. **Penalidade de capacidade**: kg excedentes acima da capacidade do veiculo, multiplicados por um peso alto (1000 por padrao), criando forte pressao seletiva contra solucoes invalidas.
-4. **Penalidade de autonomia**: km excedentes acima do alcance maximo do veiculo, com a mesma logica de penalizacao.
-
-Os pesos sao configuraveis via `FitnessWeights`, permitindo ajustar a importancia relativa de cada termo sem alterar o codigo do AG.
-
-## Experimentos comparativos
-
-Foram executadas 4 configuracoes do AG sobre o mesmo cenario sintetico (25 entregas, 4 veiculos, 120 geracoes), variando tamanho de populacao, taxa de mutacao e tamanho do torneio:
-
-| Configuracao | Populacao | Mutacao | Torneio | Fitness final | Distancia (km) | Tempo (s) | Geracao do melhor |
-|---|---|---|---|---|---|---|---|
-| A - pop. pequena, mutacao baixa | 30 | 0.05 | 3 | 5490.37 | 305.71 | 0.47 | 115 |
-| B - pop. grande, mutacao baixa | 150 | 0.05 | 3 | 358.64 | 265.13 | 2.25 | 82 |
-| C - pop. media, mutacao alta | 80 | 0.40 | 3 | **322.75** | 234.41 | 1.23 | 87 |
-| D - pop. media, mutacao baixa, torneio maior | 80 | 0.10 | 6 | 330.84 | 241.44 | 1.62 | 90 |
-
-**Conclusoes:**
-
-- A Config A (populacao pequena + mutacao baixa) ficou muito atras das demais — populacao pequena limita a diversidade genetica inicial, e mutacao baixa nao compensa essa falta de diversidade, fazendo o AG convergir prematuramente para um otimo local ruim (fitness ~17x pior que as outras configuracoes).
-- A Config C (populacao media + mutacao alta) obteve o melhor resultado, sugerindo que, para este cenario, uma taxa de mutacao mais agressiva (0.40) ajuda a escapar de otimos locais sem exigir uma populacao tao grande quanto a Config B.
-- A Config B (populacao grande) chega perto do melhor resultado mas com o maior custo computacional (quase 2x o tempo da Config C), mostrando que aumentar a populacao tem retornos decrescentes quando a taxa de mutacao ja e baixa.
-- Reproduza os experimentos com `poetry run python experiments/run_experiments.py` (resultados salvos em `experiments/results/`).
-
-## Integracao com Claude
-
-`app/llm/claude_client.py` encapsula todas as chamadas ao SDK `anthropic`, isolando o restante da aplicacao da API (facilita mock em testes e troca de modelo). Tres funcionalidades:
-
-1. **Instrucoes por motorista** (`generate_driver_instructions`): gera, em portugues, a ordem das paradas, alertas para itens criticos, e lembrete de retorno ao deposito.
-2. **Relatorio de eficiencia** (`generate_efficiency_report`): compara a distancia da rota otimizada com uma rota aleatoria (baseline), reportando economia em km e %.
-3. **Perguntas em linguagem natural** (`answer_question_about_routes`): responde perguntas como "qual entrega e mais urgente?" ou "qual veiculo esta mais sobrecarregado?", com base nos dados reais das rotas otimizadas.
-
-A `ANTHROPIC_API_KEY` e lida exclusivamente de variavel de ambiente (`.env` local ou Key Vault em produção) — nunca hardcoded no codigo.
-
-## Testes automatizados
-
-35 testes pytest cobrindo:
-
-- `tests/test_fitness.py` — distancia Haversine, decodificacao de cromossomo, funcao fitness (capacidade, prioridade).
-- `tests/test_operators.py` — selecao por torneio, crossover OX (validade da permutacao), mutacao por inversao.
-- `tests/test_algorithm.py` — execucao completa do AG, monotonicidade do fitness com elitismo.
-- `tests/test_models.py` — validacoes das dataclasses de dominio.
-- `tests/test_geocoding.py` — servico de geocodificacao com mock do Nominatim (sem chamadas reais de rede).
-- `tests/test_claude_client.py` — integracao com a Claude API, sempre mockada (sem custo ou dependencia de rede nos testes).
-
-```bash
-poetry run pytest tests/ -v
+```powershell
+cd medroutes-fiap
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+.\infra\deploy.ps1
 ```
 
-## Deploy no Azure
-
-Infraestrutura definida em Bicep (`infra/`), seguindo boas praticas de seguranca do Azure:
-
-- **Sem chaves/admin no ACR**: autenticacao via Managed Identity com role `AcrPull`.
-- **Key Vault com RBAC habilitado e purge protection ativado**: guarda a `ANTHROPIC_API_KEY`; o Container App le o segredo via Managed Identity (role `Key Vault Secrets User`), nunca em texto plano.
-- **Container Apps Environment** com logs encaminhados para Log Analytics.
-
-Recursos criados: Resource Group, Container Registry, Managed Identity, Key Vault, Log Analytics Workspace, Container Apps Environment, Container App.
-
-### Deploy manual
-
-```bash
-az login
-ANTHROPIC_API_KEY=sk-ant-xxx ./infra/deploy.sh
-```
-
-O script valida a infraestrutura com `az deployment sub what-if` antes de aplicar, builda e publica a imagem Docker no ACR, e atualiza o Container App.
+O script executa:
+1. `az deployment sub what-if` — valida sem aplicar (pede confirmação)
+2. `az deployment sub create` — aplica o Bicep
+3. `az acr build` — builda a imagem no ACR (sem Docker local)
+4. `az containerapp update` — atualiza o Container App
 
 ### Deploy via GitHub Actions
 
-`.github/workflows/deploy.yml` roda os testes pytest e, em caso de sucesso (push em `main`), aplica a infraestrutura e atualiza a imagem via OIDC (sem secrets de longa duracao). Requer os secrets do repositorio: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `ANTHROPIC_API_KEY`.
+Basta fazer push na branch `main` ou `master`. O pipeline roda automaticamente.
 
-## Limitacoes conhecidas
+---
 
-- A geocodificacao via Nominatim e gratuita mas tem limite de ~1 requisicao/segundo; cadastrar muitas entregas de uma vez pode ser lento.
-- A decodificacao do cromossomo usa uma heuristica greedy (nao um split otimo via programacao dinamica); funciona bem na pratica mas nao garante a melhor distribuicao possivel entre veiculos para cada permutacao.
-- O calculo de distancia usa Haversine (linha reta), nao distancia rodoviaria real — adequado para o escopo do desafio, mas nao reflete trafego ou trajeto real de ruas.
+## Estrutura de pastas
+
+```
+medroutes/
+├── app/
+│   ├── main.py                  # Streamlit entry point
+│   ├── geocoding.py             # Geocodificação via Nominatim
+│   ├── genetic/
+│   │   ├── algorithm.py         # GeneticAlgorithm — loop principal, elitismo
+│   │   ├── operators.py         # tournament_selection, order_crossover, inversion_mutation
+│   │   └── fitness.py           # decode_chromosome, evaluate_fitness, haversine
+│   ├── llm/
+│   │   └── claude_client.py     # ClaudeClient — instruções, relatório, Q&A
+│   ├── maps/
+│   │   └── route_map.py         # Mapa Folium com rotas por veículo
+│   └── models/
+│       └── delivery.py          # Dataclasses: Delivery, Vehicle, DepotLocation, RoutingProblem
+├── experiments/
+│   ├── run_experiments.py       # 4 configurações comparativas do AG
+│   └── results/                 # CSV + gráfico de convergência (gerados)
+├── infra/
+│   ├── main.bicep               # Entry point Bicep (escopo subscription)
+│   ├── resources.bicep          # Recursos do Resource Group
+│   ├── parameters.json          # Parâmetros de deploy
+│   └── deploy.ps1               # Script de deploy manual (Windows/PowerShell)
+├── tests/                       # 35 testes pytest
+├── .github/workflows/
+│   └── deploy.yml               # Pipeline CI/CD
+├── Dockerfile                   # Imagem Python 3.11 slim + Poetry
+├── pyproject.toml               # Dependências e configuração Poetry
+├── .env.example                 # Template de variáveis de ambiente
+└── README.md
+```
+
+---
+
+## Limitações conhecidas
+
+- **Geocodificação lenta:** Nominatim tem limite de ~1 req/s; muitas entregas cadastradas de uma vez podem demorar.
+- **Distância em linha reta:** Haversine não considera vias reais, trânsito ou semáforos — adequado para o escopo do desafio.
+- **Decodificação greedy:** a distribuição de entregas entre veículos usa heurística greedy, não split ótimo via programação dinâmica.
+- **Sem janela de tempo:** o modelo atual não suporta restrições de horário de entrega.
+- **Estado em memória:** o Streamlit não persiste dados entre sessões — cada reload reinicia o cadastro.
