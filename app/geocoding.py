@@ -1,8 +1,8 @@
 """
-Geocodificacao de enderecos usando Nominatim (OpenStreetMap), gratuito.
+Geocodificação de endereços usando Nominatim (OpenStreetMap), gratuito.
 
-Converte enderecos textuais informados pelo usuario em coordenadas
-(latitude, longitude) usadas pelo Algoritmo Genetico e pelo mapa Folium.
+Converte endereços textuais informados pelo usuário em coordenadas
+(latitude, longitude) usadas pelo Algoritmo Genético e pelo mapa Folium.
 """
 
 from __future__ import annotations
@@ -19,12 +19,12 @@ from app.models.delivery import Delivery, DepotLocation
 
 
 class GeocodingError(Exception):
-    """Lancado quando um endereco nao pode ser geocodificado."""
+    """Lançado quando um endereço não pode ser geocodificado."""
 
 
 @dataclass
 class GeocodingResult:
-    """Resultado de uma geocodificacao bem-sucedida."""
+    """Resultado de uma geocodificação bem-sucedida."""
 
     address: str
     latitude: float
@@ -33,11 +33,11 @@ class GeocodingResult:
 
 
 class GeocodingService:
-    """Encapsula chamadas ao Nominatim com retry simples e User-Agent obrigatorio.
+    """Encapsula chamadas ao Nominatim com retry simples e User-Agent obrigatório.
 
-    O Nominatim exige um User-Agent identificavel por politica de uso
+    O Nominatim exige um User-Agent identificável por política de uso
     (https://operations.osmfoundation.org/policies/nominatim/) e recomenda
-    no maximo 1 requisicao por segundo, por isso o pequeno `delay_seconds`
+    no máximo 1 requisição por segundo, por isso o pequeno `delay_seconds`
     entre chamadas sucessivas.
     """
 
@@ -55,20 +55,20 @@ class GeocodingService:
         self._geolocator = Nominatim(user_agent=self.user_agent)
 
     def geocode_address(self, address: str) -> GeocodingResult:
-        """Geocodifica um unico endereco textual.
+        """Geocodifica um único endereço textual.
 
-        Lanca GeocodingError se o endereco nao for encontrado apos as
-        tentativas de retry, ou se o servico do Nominatim falhar.
+        Lança GeocodingError se o endereço não for encontrado após as
+        tentativas de retry, ou se o serviço do Nominatim falhar.
         """
         if not address or not address.strip():
-            raise GeocodingError("Endereco vazio nao pode ser geocodificado")
+            raise GeocodingError("Endereço vazio não pode ser geocodificado")
 
         last_error: Exception | None = None
         for attempt in range(1, self.max_retries + 1):
             try:
                 location = self._geolocator.geocode(address)
                 if location is None:
-                    raise GeocodingError(f"Endereco nao encontrado: '{address}'")
+                    raise GeocodingError(f"Endereço não encontrado: '{address}'")
                 return GeocodingResult(
                     address=address,
                     latitude=location.latitude,
@@ -82,7 +82,7 @@ class GeocodingService:
                 continue
 
         raise GeocodingError(
-            f"Falha ao geocodificar '{address}' apos {self.max_retries} tentativas"
+            f"Falha ao geocodificar '{address}' após {self.max_retries} tentativas"
         ) from last_error
 
     def geocode_delivery(self, delivery: Delivery) -> Delivery:
@@ -94,7 +94,7 @@ class GeocodingService:
         return delivery
 
     def geocode_depot(self, depot: DepotLocation) -> DepotLocation:
-        """Geocodifica o deposito in-place e o retorna (lat/lon preenchidos)."""
+        """Geocodifica o depósito in-place e o retorna (lat/lon preenchidos)."""
         result = self.geocode_address(depot.address)
         depot.latitude = result.latitude
         depot.longitude = result.longitude

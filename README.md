@@ -6,6 +6,21 @@
 Sistema completo de otimização de rotas para distribuição de medicamentos e insumos hospitalares. Resolve o **Vehicle Routing Problem (VRP)** com um **Algoritmo Genético implementado do zero**, visualiza as rotas em mapa interativo e usa a **API da Anthropic (Claude Sonnet)** para gerar instruções para motoristas, relatórios de eficiência e responder perguntas em linguagem natural.
 
 🌐 **Demo em produção:** https://ca-medroutes.ambitiousstone-87ab2c0d.eastus2.azurecontainerapps.io
+📄 **Relatório técnico:** [RELATORIO.pdf](RELATORIO.pdf) · [RELATORIO.html](RELATORIO.html)
+🎥 **Vídeo de demonstração:** _(inserir link do YouTube/Vimeo)_
+
+---
+
+## Equipe
+
+| Nome | RM |
+|---|---|
+| Dhiego Pimenta | RMxxxxxx |
+| Rafael Cardoso de Oliveira | RM373129 |
+| _Integrante 3_ | _RMxxxxxx_ |
+| _Integrante 4_ | _RMxxxxxx_ |
+
+> Preencher os RMs e adicionar/remover linhas conforme a composição final do grupo.
 
 ---
 
@@ -201,23 +216,32 @@ A `ANTHROPIC_API_KEY` é lida **exclusivamente** de variável de ambiente — nu
 
 ## Experimentos comparativos
 
-Executados via `experiments/run_experiments.py` sobre cenário sintético fixo: **25 entregas, 4 veículos, 120 gerações**, mesmo `random_seed=42` para comparação justa.
+Executados via `experiments/run_experiments.py` sobre um cenário sintético fixo: **25 entregas, 4 veículos, 120 gerações**. Para dar rigor estatístico, **cada configuração é executada com 10 sementes distintas** do AG e os resultados são reportados como **média ± desvio-padrão** — em vez de uma única execução, sensível à sorte da semente. As duas sementes envolvidas são independentes: a do **cenário** (`seed=7`, fixa) e a do **AG** (`random_seed`, variada nos experimentos).
 
-### Resultados
+### Baselines de referência
 
-| Config | Descrição | Pop. | Mutação | Torneio | Fitness | Dist. (km) | Tempo (s) | Melhor geração |
-|---|---|---|---|---|---|---|---|---|
-| **A** | Pop. pequena, mutação baixa | 30 | 0.05 | 3 | 5490.37 | 305.71 | 0.47 | 115 |
-| **B** | Pop. grande, mutação baixa | 150 | 0.05 | 3 | 358.64 | 265.13 | 2.25 | 82 |
-| **C** ⭐ | Pop. média, mutação alta | 80 | 0.40 | 3 | **322.75** | **234.41** | **1.23** | 87 |
-| **D** | Pop. média, torneio maior | 80 | 0.10 | 6 | 330.84 | 241.44 | 1.62 | 90 |
+| Abordagem | Distância total |
+|---|---|
+| Rota **aleatória** (média de 10 sementes) | 443,79 km |
+| Heurística do **vizinho-mais-próximo** (*nearest neighbor*) | 236,48 km |
+
+### Resultados das configurações do AG
+
+| Config | Descrição | Pop. | Mutação | Torneio | Fitness (média ± dp) | Dist. km (média ± dp) | Tempo (s) |
+|---|---|---|---|---|---|---|---|
+| **A** | Pop. pequena, mutação baixa | 30 | 0.05 | 3 | 767,3 ± 920,6 | 281,1 ± 12,2 | 0,133 |
+| **B** | Pop. grande, mutação baixa | 150 | 0.05 | 3 | 507,4 ± 575,7 | 238,5 ± 13,7 | 0,691 |
+| **C** ⭐ | Pop. média, mutação alta | 80 | 0.40 | 3 | **330,5 ± 10,8** | 240,9 ± 12,9 | 0,390 |
+| **D** | Pop. média, torneio maior | 80 | 0.10 | 6 | 337,6 ± 21,5 | 246,1 ± 20,3 | 0,379 |
+
+![Convergência do Algoritmo Genético](experiments/results/convergence.png)
 
 ### Conclusões
 
-- **Config A** convergiu para um ótimo local muito ruim — população pequena limita diversidade genética e mutação baixa não compensa, resultando em fitness ~17× pior.
-- **Config C** obteve o **melhor resultado**: mutação alta (0.40) ajuda a escapar de ótimos locais sem exigir população grande. Melhor custo-benefício.
-- **Config B** chegou perto do ótimo, mas com quase 2× o tempo de Config C — retornos decrescentes de aumentar população com mutação baixa.
-- **Melhor configuração para produção:** população média (80) + mutação alta (0.40) + torneio padrão (3).
+- **Config C é a melhor e a mais estável:** menor fitness médio (330,5) **e** menor desvio-padrão (± 10,8). Mutação alta (0.40) escapa de ótimos locais melhor — e mais barato — do que população grande com mutação baixa (Config B).
+- **Config A é instável:** o desvio-padrão de ± 920 (só visível com múltiplas sementes) revela que população pequena + mutação baixa fica presa em ótimos locais de qualidade imprevisível.
+- **O AG não vence o vizinho-mais-próximo em distância pura (240,9 vs. 236,48 km) — e isso é esperado:** o AG otimiza um objetivo **multicritério** (distância **+** prioridade de críticos), trocando ~4 km por uma priorização clínica adequada. Contra o baseline aleatório, reduz a distância em **~46%**.
+- Análise completa no [relatório técnico](RELATORIO.pdf).
 
 ---
 
@@ -227,7 +251,7 @@ Executados via `experiments/run_experiments.py` sobre cenário sintético fixo: 
 
 | Tecnologia | Versão | Função |
 |---|---|---|
-| **Python** | 3.11 | Linguagem principal |
+| **Python** | 3.10+ | Linguagem principal (imagem Docker usa 3.11) |
 | **Poetry** | latest | Gerenciamento de dependências e ambiente virtual |
 | **Streamlit** | ^1.38 | Interface web interativa |
 | **Folium** | ^0.17 | Visualização de mapas (Leaflet.js) |
@@ -463,12 +487,29 @@ poetry run pytest tests/ -v
 ## Como rodar os experimentos
 
 ```bash
+# 1. roda as 4 configurações com 10 sementes cada (média ± desvio-padrão)
 poetry run python experiments/run_experiments.py
+
+# 2. gera o gráfico de convergência (PNG) a partir do JSON do passo 1
+poetry run python tools/render_chart.py
 ```
 
-Gera em `experiments/results/`:
-- `comparison.csv` — tabela com métricas de todas as configurações
-- `convergence.png` — gráfico de convergência por configuração
+O passo 1 gera em `experiments/results/`:
+- `comparison.csv` — tabela agregada (média ± desvio-padrão) das configurações + baselines
+- `convergence.json` — curvas médias de convergência por configuração
+
+O passo 2 gera `experiments/results/convergence.png` (via Chrome headless + Chart.js).
+
+---
+
+## Como gerar o relatório técnico (PDF + HTML)
+
+```bash
+# requer os experimentos e o gráfico já gerados (passos acima)
+poetry run python tools/build_report.py
+```
+
+Converte `RELATORIO.md` em `RELATORIO.html` e `RELATORIO.pdf` (Markdown → HTML com CSS de impressão → PDF via Chrome headless). O gráfico de convergência é embutido automaticamente.
 
 ---
 
@@ -517,8 +558,13 @@ medroutes/
 │   └── models/
 │       └── delivery.py          # Dataclasses: Delivery, Vehicle, DepotLocation, RoutingProblem
 ├── experiments/
-│   ├── run_experiments.py       # 4 configurações comparativas do AG
-│   └── results/                 # CSV + gráfico de convergência (gerados)
+│   ├── run_experiments.py       # 4 configs × 10 sementes (média ± dp) + baselines
+│   └── results/                 # comparison.csv, convergence.json, convergence.png (gerados)
+├── tools/
+│   ├── render_chart.py          # convergence.json → convergence.png (Chart.js + Chrome)
+│   ├── build_report.py          # RELATORIO.md → RELATORIO.html + RELATORIO.pdf
+│   ├── _chrome.py               # helper do Chrome headless (PNG/PDF)
+│   └── assets/                  # CSS de impressão + Chart.js vendorizado
 ├── infra/
 │   ├── main.bicep               # Entry point Bicep (escopo subscription)
 │   ├── resources.bicep          # Recursos do Resource Group
@@ -527,9 +573,12 @@ medroutes/
 ├── tests/                       # 35 testes pytest
 ├── .github/workflows/
 │   └── deploy.yml               # Pipeline CI/CD
+├── RELATORIO.md                 # Fonte do relatório técnico (pt-BR)
+├── RELATORIO.pdf / .html        # Relatório gerado (PDF + HTML)
 ├── Dockerfile                   # Imagem Python 3.11 slim + Poetry
 ├── pyproject.toml               # Dependências e configuração Poetry
 ├── .env.example                 # Template de variáveis de ambiente
+├── LICENSE                      # Licença MIT
 └── README.md
 ```
 

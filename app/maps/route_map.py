@@ -1,10 +1,10 @@
 """
-Visualizacao das rotas otimizadas em um mapa interativo Folium.
+Visualização das rotas otimizadas em um mapa interativo Folium.
 
-Cada veiculo recebe uma cor distinta para sua rota. Os marcadores de
-entrega sao diferenciados por prioridade: medicamentos criticos usam um
-icone de alerta vermelho, insumos regulares usam um icone azul padrao.
-O deposito e marcado com um icone de casa/home.
+Cada veículo recebe uma cor distinta para sua rota. Os marcadores de
+entrega são diferenciados por prioridade: medicamentos críticos usam um
+ícone de alerta vermelho, insumos regulares usam um ícone azul padrão.
+O depósito é marcado com um ícone de casa/home.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import folium
 from app.genetic.fitness import VehicleRoute
 from app.models.delivery import DepotLocation
 
-# paleta de cores ciclica para diferenciar rotas de veiculos no mapa
+# paleta de cores cíclica para diferenciar rotas de veículos no mapa
 ROUTE_COLORS = [
     "#1f77b4",  # azul
     "#d62728",  # vermelho
@@ -36,23 +36,23 @@ def build_route_map(
     depot: DepotLocation,
     zoom_start: int = 12,
 ) -> folium.Map:
-    """Constroi um mapa Folium com as rotas otimizadas de cada veiculo.
+    """Constrói um mapa Folium com as rotas otimizadas de cada veículo.
 
     Args:
-        routes: Rotas decodificadas e otimizadas pelo Algoritmo Genetico.
-        depot: Localizacao do deposito (ponto de partida/retorno).
-        zoom_start: Nivel de zoom inicial do mapa.
+        routes: Rotas decodificadas e otimizadas pelo Algoritmo Genético.
+        depot: Localização do depósito (ponto de partida/retorno).
+        zoom_start: Nível de zoom inicial do mapa.
 
     Returns:
-        Um objeto folium.Map pronto para renderizacao (ex.: via streamlit-folium).
+        Um objeto folium.Map pronto para renderização (ex.: via streamlit-folium).
     """
     depot_coords = depot.coordinates
     route_map = folium.Map(location=depot_coords, zoom_start=zoom_start, tiles="OpenStreetMap")
 
     folium.Marker(
         location=depot_coords,
-        popup="Deposito Central",
-        tooltip="Deposito (origem/retorno)",
+        popup="Depósito Central",
+        tooltip="Depósito (origem/retorno)",
         icon=folium.Icon(color="black", icon="home", prefix="fa"),
     ).add_to(route_map)
 
@@ -68,7 +68,7 @@ def build_route_map(
 
             icon_color = "red" if delivery.is_critical else "blue"
             icon_symbol = "exclamation-triangle" if delivery.is_critical else "box"
-            priority_label = "CRITICO" if delivery.is_critical else "Regular"
+            priority_label = "CRÍTICO" if delivery.is_critical else "Regular"
 
             popup_html = (
                 f"<b>Parada {stop_order}</b> - {route.vehicle.label}<br>"

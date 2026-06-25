@@ -1,6 +1,6 @@
 # Dockerfile do MedRoutes - imagem para Azure Container Apps
-# Build multi-stage: instala dependencias com Poetry em uma camada separada
-# da aplicacao para aproveitar cache do Docker entre builds.
+# Build multi-stage: instala dependências com Poetry em uma camada separada
+# da aplicação para aproveitar cache do Docker entre builds.
 
 FROM python:3.11-slim AS base
 
@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# dependencias do sistema necessarias para compilar pacotes Python nativos
+# dependências do sistema necessárias para compilar pacotes Python nativos
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
@@ -24,10 +24,10 @@ RUN pip install --no-cache-dir poetry==1.8.3
 COPY pyproject.toml poetry.lock* ./
 RUN poetry install --no-root --only main
 
-# copia o restante do codigo da aplicacao
+# copia o restante do código da aplicação
 COPY app/ ./app/
 
-# usuario nao-root por seguranca (boas praticas de containers em produção)
+# usuário não-root por segurança (boas práticas de containers em produção)
 RUN useradd --create-home --shell /bin/bash medroutes \
     && chown -R medroutes:medroutes /app
 USER medroutes
