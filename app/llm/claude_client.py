@@ -1,15 +1,15 @@
 """
-Integracao com a API da Anthropic (Claude) para gerar conteudo em
-linguagem natural a partir das rotas otimizadas pelo Algoritmo Genetico.
+Integração com a API da Anthropic (Claude) para gerar conteúdo em
+linguagem natural a partir das rotas otimizadas pelo Algoritmo Genético.
 
 Funcionalidades:
-    - Instrucoes detalhadas de entrega para cada motorista.
-    - Relatorio de eficiencia da rota (distancia, tempo estimado, economia
-      em relacao a uma rota aleatoria/nao otimizada).
+    - Instruções detalhadas de entrega para cada motorista.
+    - Relatório de eficiência da rota (distância, tempo estimado, economia
+      em relação a uma rota aleatória/não otimizada).
     - Respostas a perguntas em linguagem natural sobre as rotas.
 
-A ANTHROPIC_API_KEY e lida exclusivamente de variavel de ambiente (nunca
-hardcoded), seguindo a restricao de seguranca do projeto.
+A ANTHROPIC_API_KEY é lida exclusivamente de variável de ambiente (nunca
+hardcoded), seguindo a restrição de segurança do projeto.
 """
 
 from __future__ import annotations
@@ -24,12 +24,12 @@ DEFAULT_MODEL = "claude-sonnet-4-6"
 
 
 class ClaudeClientError(Exception):
-    """Lancado quando a chamada a API da Anthropic falha ou a chave nao existe."""
+    """Lançado quando a chamada à API da Anthropic falha ou a chave não existe."""
 
 
 @dataclass
 class RouteEfficiencyMetrics:
-    """Metricas resumidas usadas para compor prompts de relatorio/instrucoes."""
+    """Métricas resumidas usadas para compor prompts de relatório/instruções."""
 
     total_distance_km: float
     random_baseline_distance_km: float
@@ -67,7 +67,7 @@ class ClaudeClient:
 
         if not self.api_key:
             raise ClaudeClientError(
-                "ANTHROPIC_API_KEY nao configurada. Defina a variavel de "
+                "ANTHROPIC_API_KEY não configurada. Defina a variável de "
                 "ambiente antes de usar funcionalidades de IA generativa."
             )
 
@@ -75,7 +75,7 @@ class ClaudeClient:
             import anthropic
         except ImportError as error:
             raise ClaudeClientError(
-                "Biblioteca 'anthropic' nao instalada. Rode `poetry install`."
+                "Biblioteca 'anthropic' não instalada. Rode `poetry install`."
             ) from error
 
         self._client = anthropic.Anthropic(api_key=self.api_key)
@@ -90,7 +90,7 @@ class ClaudeClient:
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}],
             )
-        except Exception as error:  # erro generico do SDK da Anthropic
+        except Exception as error:  # erro genérico do SDK da Anthropic
             raise ClaudeClientError(f"Falha ao chamar a API da Anthropic: {error}") from error
 
         return "".join(
@@ -100,43 +100,43 @@ class ClaudeClient:
     def generate_driver_instructions(
         self, route: VehicleRoute, depot: DepotLocation
     ) -> str:
-        """Gera instrucoes detalhadas em linguagem natural para um motorista."""
+        """Gera instruções detalhadas em linguagem natural para um motorista."""
         stops_description = "\n".join(
             f"{i+1}. {d.label} - {d.weight_kg:.1f}kg - "
-            f"{'MEDICAMENTO CRITICO' if d.is_critical else 'Insumo regular'}"
+            f"{'MEDICAMENTO CRÍTICO' if d.is_critical else 'Insumo regular'}"
             for i, d in enumerate(route.deliveries)
         )
         system_prompt = (
-            "Voce e um assistente de logistica que escreve instrucoes claras, "
-            "objetivas e amigaveis para motoristas de entrega de medicamentos "
-            "e insumos hospitalares. Responda em portugues do Brasil."
+            "Você é um assistente de logística que escreve instruções claras, "
+            "objetivas e amigáveis para motoristas de entrega de medicamentos "
+            "e insumos hospitalares. Responda em português do Brasil."
         )
         user_prompt = (
-            f"Gere instrucoes de entrega para o motorista do {route.vehicle.label}.\n"
+            f"Gere instruções de entrega para o motorista do {route.vehicle.label}.\n"
             f"Ponto de partida: {depot.address}.\n"
-            f"Paradas na ordem definida (NAO reordene):\n{stops_description}\n\n"
-            "Inclua: ordem das paradas, atencao especial para itens criticos "
-            "(entregar com prioridade e cuidado), e um lembrete de retornar ao deposito."
+            f"Paradas na ordem definida (NÃO reordene):\n{stops_description}\n\n"
+            "Inclua: ordem das paradas, atenção especial para itens críticos "
+            "(entregar com prioridade e cuidado), e um lembrete de retornar ao depósito."
         )
         return self._send_prompt(system_prompt, user_prompt)
 
     def generate_efficiency_report(self, metrics: RouteEfficiencyMetrics) -> str:
-        """Gera relatorio de eficiencia comparando a rota otimizada a uma rota aleatoria."""
+        """Gera relatório de eficiência comparando a rota otimizada a uma rota aleatória."""
         system_prompt = (
-            "Voce e um analista de logistica que resume metricas de eficiencia "
-            "de roteamento de forma clara para gestores nao tecnicos. "
-            "Responda em portugues do Brasil."
+            "Você é um analista de logística que resume métricas de eficiência "
+            "de roteamento de forma clara para gestores não técnicos. "
+            "Responda em português do Brasil."
         )
         user_prompt = (
-            "Resuma a eficiencia da rota otimizada com base nestas metricas:\n"
-            f"- Distancia total otimizada: {metrics.total_distance_km:.1f} km\n"
-            f"- Distancia de uma rota aleatoria (baseline): {metrics.random_baseline_distance_km:.1f} km\n"
+            "Resuma a eficiência da rota otimizada com base nestas métricas:\n"
+            f"- Distância total otimizada: {metrics.total_distance_km:.1f} km\n"
+            f"- Distância de uma rota aleatória (baseline): {metrics.random_baseline_distance_km:.1f} km\n"
             f"- Economia: {metrics.distance_savings_km:.1f} km ({metrics.distance_savings_percent:.1f}%)\n"
-            f"- Veiculos utilizados: {metrics.num_vehicles_used}\n"
-            f"- Total de entregas: {metrics.num_deliveries} (sendo {metrics.num_critical_deliveries} criticas)\n"
-            f"- Tempo estimado de execucao: {metrics.estimated_time_hours:.1f} horas\n\n"
-            "Escreva um paragrafo executivo destacando o ganho de eficiencia "
-            "e a importancia de priorizar as entregas criticas."
+            f"- Veículos utilizados: {metrics.num_vehicles_used}\n"
+            f"- Total de entregas: {metrics.num_deliveries} (sendo {metrics.num_critical_deliveries} críticas)\n"
+            f"- Tempo estimado de execução: {metrics.estimated_time_hours:.1f} horas\n\n"
+            "Escreva um parágrafo executivo destacando o ganho de eficiência "
+            "e a importância de priorizar as entregas críticas."
         )
         return self._send_prompt(system_prompt, user_prompt)
 
@@ -148,16 +148,16 @@ class ClaudeClient:
             f"{route.vehicle.label}: {len(route.deliveries)} entregas, "
             f"{route.total_weight_kg:.1f}kg / {route.vehicle.capacity_kg:.1f}kg capacidade, "
             f"{route.distance_km(depot.coordinates):.1f}km / {route.vehicle.max_range_km:.1f}km autonomia, "
-            f"criticos: {sum(1 for d in route.deliveries if d.is_critical)}"
+            f"críticos: {sum(1 for d in route.deliveries if d.is_critical)}"
             for route in routes
         )
         system_prompt = (
-            "Voce e um assistente que responde perguntas sobre rotas de entrega "
+            "Você é um assistente que responde perguntas sobre rotas de entrega "
             "de medicamentos com base nos dados fornecidos. Seja direto e preciso. "
-            "Responda em portugues do Brasil."
+            "Responda em português do Brasil."
         )
         user_prompt = (
             f"Dados das rotas otimizadas:\n{routes_summary}\n\n"
-            f"Pergunta do usuario: {question}"
+            f"Pergunta do usuário: {question}"
         )
         return self._send_prompt(system_prompt, user_prompt)

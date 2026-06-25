@@ -1,13 +1,13 @@
 """
-Funcao fitness e utilitarios de distancia para o Algoritmo Genetico do VRP.
+Função fitness e utilitários de distância para o Algoritmo Genético do VRP.
 
-A representacao cromossomica adotada e um "giant tour": uma permutacao com
-os indices de TODAS as entregas, sem marcar explicitamente a separacao entre
-veiculos. A decodificacao (`decode_chromosome`) percorre essa permutacao e
-distribui as entregas entre os veiculos disponiveis respeitando capacidade
-de carga e autonomia maxima, abrindo um novo veiculo sempre que o atual nao
-comporta a proxima entrega. Essa abordagem permite usar operadores classicos
-de permutacao (OX, inversao) mesmo com multiplas rotas.
+A representação cromossômica adotada é um "giant tour": uma permutação com
+os índices de TODAS as entregas, sem marcar explicitamente a separação entre
+veículos. A decodificação (`decode_chromosome`) percorre essa permutação e
+distribui as entregas entre os veículos disponíveis respeitando capacidade
+de carga e autonomia máxima, abrindo um novo veículo sempre que o atual não
+comporta a próxima entrega. Essa abordagem permite usar operadores clássicos
+de permutação (OX, inversão) mesmo com múltiplas rotas.
 """
 
 from __future__ import annotations
@@ -22,10 +22,10 @@ from app.models.delivery import Delivery, RoutingProblem, Vehicle
 def haversine_distance_km(
     coord_a: tuple[float, float], coord_b: tuple[float, float]
 ) -> float:
-    """Calcula a distancia em quilometros entre duas coordenadas (lat, lon).
+    """Calcula a distância em quilômetros entre duas coordenadas (lat, lon).
 
-    Usa a formula de Haversine, que considera a curvatura da Terra e e
-    adequada para distancias rodoviarias aproximadas em escala urbana.
+    Usa a fórmula de Haversine, que considera a curvatura da Terra e é
+    adequada para distâncias rodoviárias aproximadas em escala urbana.
     """
     lat1, lon1 = coord_a
     lat2, lon2 = coord_b
@@ -45,7 +45,7 @@ def haversine_distance_km(
 
 @dataclass
 class VehicleRoute:
-    """Rota decodificada de um unico veiculo."""
+    """Rota decodificada de um único veículo."""
 
     vehicle: Vehicle
     deliveries: list[Delivery] = field(default_factory=list)
@@ -55,7 +55,7 @@ class VehicleRoute:
         return sum(d.weight_kg for d in self.deliveries)
 
     def distance_km(self, depot_coords: tuple[float, float]) -> float:
-        """Distancia total da rota: deposito -> entregas em sequencia -> deposito."""
+        """Distância total da rota: depósito -> entregas em sequência -> depósito."""
         if not self.deliveries:
             return 0.0
         total = 0.0
@@ -76,14 +76,14 @@ class VehicleRoute:
 def decode_chromosome(
     chromosome: Sequence[int], problem: RoutingProblem
 ) -> list[VehicleRoute]:
-    """Decodifica um cromossomo (permutacao de indices de entregas) em rotas.
+    """Decodifica um cromossomo (permutação de índices de entregas) em rotas.
 
-    Estrategia greedy: percorre a permutacao na ordem dada e tenta encaixar
-    cada entrega no veiculo atual. Se a entrega nao couber (capacidade ou
-    autonomia excedida), avanca para o proximo veiculo disponivel. Se todos
-    os veiculos se esgotarem, as entregas restantes sao acumuladas no ultimo
-    veiculo mesmo violando os limites -- a violacao e penalizada fortemente
-    na funcao fitness, criando pressao seletiva contra essas solucoes.
+    Estratégia greedy: percorre a permutação na ordem dada e tenta encaixar
+    cada entrega no veículo atual. Se a entrega não couber (capacidade ou
+    autonomia excedida), avança para o próximo veículo disponível. Se todos
+    os veículos se esgotarem, as entregas restantes são acumuladas no último
+    veículo mesmo violando os limites -- a violação é penalizada fortemente
+    na função fitness, criando pressão seletiva contra essas soluções.
     """
     depot_coords = problem.depot.coordinates  # type: ignore[union-attr]
     routes = [VehicleRoute(vehicle=v) for v in problem.vehicles]
@@ -93,7 +93,7 @@ def decode_chromosome(
         delivery = problem.deliveries[gene]
         placed = False
 
-        # tenta o veiculo atual e os seguintes, na ordem
+        # tenta o veículo atual e os seguintes, na ordem
         search_index = vehicle_index
         while search_index < len(routes):
             candidate_route = routes[search_index]
@@ -108,8 +108,8 @@ def decode_chromosome(
             search_index += 1
 
         if not placed:
-            # nenhum veiculo restante comporta a entrega: forca no ultimo
-            # veiculo, violando capacidade (penalizado no fitness)
+            # nenhum veículo restante comporta a entrega: força no último
+            # veículo, violando capacidade (penalizado no fitness)
             routes[-1].deliveries.append(delivery)
 
     return routes
@@ -117,11 +117,11 @@ def decode_chromosome(
 
 @dataclass
 class FitnessWeights:
-    """Pesos configuraveis da funcao fitness, usados nos experimentos.
+    """Pesos configuráveis da função fitness, usados nos experimentos.
 
     Attributes:
-        distance_weight: Peso da distancia total percorrida pela frota.
-        priority_weight: Peso do termo de priorizacao de entregas criticas.
+        distance_weight: Peso da distância total percorrida pela frota.
+        priority_weight: Peso do termo de priorização de entregas críticas.
         capacity_penalty: Penalidade por kg excedente de capacidade.
         range_penalty: Penalidade por km excedente de autonomia.
     """
@@ -137,14 +137,14 @@ def evaluate_fitness(
     problem: RoutingProblem,
     weights: FitnessWeights | None = None,
 ) -> float:
-    """Calcula o fitness de um cromossomo. Quanto MENOR, melhor a solucao.
+    """Calcula o fitness de um cromossomo. Quanto MENOR, melhor a solução.
 
     O fitness combina quatro componentes:
-    1. Distancia total percorrida por toda a frota (minimizar custo/tempo).
-    2. Penalizacao de prioridade: entregas criticas posicionadas tarde em
+    1. Distância total percorrida por toda a frota (minimizar custo/tempo).
+    2. Penalização de prioridade: entregas críticas posicionadas tarde em
        sua rota aumentam o fitness (queremos que sejam entregues primeiro).
-    3. Penalidade de capacidade: kg excedentes acima da capacidade do veiculo.
-    4. Penalidade de autonomia: km excedentes acima do alcance maximo.
+    3. Penalidade de capacidade: kg excedentes acima da capacidade do veículo.
+    4. Penalidade de autonomia: km excedentes acima do alcance máximo.
     """
     weights = weights or FitnessWeights()
     depot_coords = problem.depot.coordinates  # type: ignore[union-attr]
@@ -162,8 +162,8 @@ def evaluate_fitness(
         route_distance = route.distance_km(depot_coords)
         total_distance += route_distance
 
-        # penaliza entregas criticas que aparecem tarde na rota: posicao
-        # normalizada (0 = primeira entrega, 1 = ultima) multiplicada pelo
+        # penaliza entregas críticas que aparecem tarde na rota: posição
+        # normalizada (0 = primeira entrega, 1 = última) multiplicada pelo
         # peso de prioridade do tipo de entrega
         route_length = len(route.deliveries)
         for position, delivery in enumerate(route.deliveries):

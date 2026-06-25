@@ -1,15 +1,15 @@
 """
-Algoritmo Genetico principal para o problema de roteamento de veiculos (VRP)
+Algoritmo Genético principal para o problema de roteamento de veículos (VRP)
 do MedRoutes. Implementado do zero, sem bibliotecas de AG (ex.: DEAP).
 
 Fluxo geral:
-    1. Inicializa uma populacao de cromossomos aleatorios (permutacoes).
-    2. A cada geracao: avalia fitness, seleciona pais por torneio, aplica
-       crossover OX e mutacao por inversao, e monta a proxima geracao.
-    3. Aplica elitismo: o(s) melhor(es) individuo(s) da geracao atual
-       sempre sobrevivem para a proxima, garantindo que o fitness nunca
-       piore entre geracoes.
-    4. Retorna a melhor solucao encontrada e o historico de fitness.
+    1. Inicializa uma população de cromossomos aleatórios (permutações).
+    2. A cada geração: avalia fitness, seleciona pais por torneio, aplica
+       crossover OX e mutação por inversão, e monta a próxima geração.
+    3. Aplica elitismo: o(s) melhor(es) indivíduo(s) da geração atual
+       sempre sobrevivem para a próxima, garantindo que o fitness nunca
+       piore entre gerações.
+    4. Retorna a melhor solução encontrada e o histórico de fitness.
 """
 
 from __future__ import annotations
@@ -31,16 +31,16 @@ from app.models.delivery import RoutingProblem
 
 @dataclass
 class GeneticAlgorithmConfig:
-    """Hiperparametros configuraveis do AG.
+    """Hiperparâmetros configuráveis do AG.
 
     Attributes:
-        population_size: Numero de individuos por geracao.
-        num_generations: Numero de geracoes a evoluir.
-        mutation_rate: Probabilidade de mutacao por inversao em cada filho.
-        tournament_size: Tamanho do torneio na selecao de pais.
-        elitism_count: Quantidade de melhores individuos preservados por geracao.
-        random_seed: Semente do gerador aleatorio, para reprodutibilidade.
-        fitness_weights: Pesos usados na funcao fitness.
+        population_size: Número de indivíduos por geração.
+        num_generations: Número de gerações a evoluir.
+        mutation_rate: Probabilidade de mutação por inversão em cada filho.
+        tournament_size: Tamanho do torneio na seleção de pais.
+        elitism_count: Quantidade de melhores indivíduos preservados por geração.
+        random_seed: Semente do gerador aleatório, para reprodutibilidade.
+        fitness_weights: Pesos usados na função fitness.
     """
 
     population_size: int = 80
@@ -54,7 +54,7 @@ class GeneticAlgorithmConfig:
 
 @dataclass
 class GenerationStats:
-    """Estatisticas de fitness coletadas em uma geracao (para analise/plots)."""
+    """Estatísticas de fitness coletadas em uma geração (para análise/plots)."""
 
     generation: int
     best_fitness: float
@@ -64,15 +64,15 @@ class GenerationStats:
 
 @dataclass
 class GeneticAlgorithmResult:
-    """Resultado final da execucao do AG.
+    """Resultado final da execução do AG.
 
     Attributes:
-        best_chromosome: Melhor permutacao encontrada.
+        best_chromosome: Melhor permutação encontrada.
         best_fitness: Fitness do melhor cromossomo (menor = melhor).
-        best_routes: Rotas decodificadas por veiculo, ja otimizadas.
-        history: Estatisticas de fitness por geracao (para graficos).
-        elapsed_seconds: Tempo total de execucao do AG.
-        config: Configuracao usada nesta execucao (util para comparativos).
+        best_routes: Rotas decodificadas por veículo, já otimizadas.
+        history: Estatísticas de fitness por geração (para gráficos).
+        elapsed_seconds: Tempo total de execução do AG.
+        config: Configuração usada nesta execução (útil para comparativos).
     """
 
     best_chromosome: Chromosome
@@ -84,7 +84,7 @@ class GeneticAlgorithmResult:
 
 
 class GeneticAlgorithm:
-    """Algoritmo Genetico para otimizacao de rotas de entrega (VRP)."""
+    """Algoritmo Genético para otimização de rotas de entrega (VRP)."""
 
     def __init__(self, problem: RoutingProblem, config: GeneticAlgorithmConfig | None = None):
         problem.validate()
@@ -108,7 +108,7 @@ class GeneticAlgorithm:
     def _build_next_generation(
         self, population: list[Chromosome], fitness_values: list[float]
     ) -> list[Chromosome]:
-        # elitismo: preserva os N melhores individuos sem alteracao
+        # elitismo: preserva os N melhores indivíduos sem alteração
         ranked_indices = sorted(range(len(population)), key=lambda i: fitness_values[i])
         next_generation = [
             list(population[i]) for i in ranked_indices[: self.config.elitism_count]
@@ -128,7 +128,7 @@ class GeneticAlgorithm:
         return next_generation[: self.config.population_size]
 
     def run(self) -> GeneticAlgorithmResult:
-        """Executa o AG completo e retorna a melhor solucao encontrada."""
+        """Executa o AG completo e retorna a melhor solução encontrada."""
         start_time = time.perf_counter()
 
         population = self._initialize_population()

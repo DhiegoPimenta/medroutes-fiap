@@ -1,10 +1,10 @@
 """
 MedRoutes - Interface Streamlit principal.
 
-Permite cadastrar entregas (medicamentos criticos ou insumos regulares),
-configurar a frota de veiculos, rodar o Algoritmo Genetico para otimizar
+Permite cadastrar entregas (medicamentos críticos ou insumos regulares),
+configurar a frota de veículos, rodar o Algoritmo Genético para otimizar
 as rotas, visualizar o resultado em um mapa Folium e interagir com o
-Claude (Anthropic) para gerar instrucoes, relatorios e responder perguntas
+Claude (Anthropic) para gerar instruções, relatórios e responder perguntas
 sobre as rotas.
 """
 
@@ -57,27 +57,27 @@ def _geocode_with_feedback(service: GeocodingService, address: str) -> tuple[flo
 
 
 def render_sidebar_setup() -> None:
-    """Cadastro do deposito, entregas e veiculos na barra lateral."""
-    st.sidebar.header("1. Deposito (origem/retorno)")
-    depot_address = st.sidebar.text_input("Endereco do deposito", key="depot_address_input")
-    if st.sidebar.button("Definir deposito", use_container_width=True):
+    """Cadastro do depósito, entregas e veículos na barra lateral."""
+    st.sidebar.header("1. Depósito (origem/retorno)")
+    depot_address = st.sidebar.text_input("Endereço do depósito", key="depot_address_input")
+    if st.sidebar.button("Definir depósito", use_container_width=True):
         service = GeocodingService()
         coords = _geocode_with_feedback(service, depot_address)
         if coords:
             st.session_state["depot"] = DepotLocation(
                 address=depot_address, latitude=coords[0], longitude=coords[1]
             )
-            st.sidebar.success("Deposito definido!")
+            st.sidebar.success("Depósito definido!")
 
     if st.session_state["depot"]:
-        st.sidebar.caption(f"Deposito atual: {st.session_state['depot'].address}")
+        st.sidebar.caption(f"Depósito atual: {st.session_state['depot'].address}")
 
     st.sidebar.divider()
     st.sidebar.header("2. Cadastrar entrega")
     with st.sidebar.form("delivery_form", clear_on_submit=True):
-        address = st.text_input("Endereco da entrega")
+        address = st.text_input("Endereço da entrega")
         delivery_type_label = st.selectbox(
-            "Tipo", ["Medicamento critico", "Insumo regular"]
+            "Tipo", ["Medicamento crítico", "Insumo regular"]
         )
         weight_kg = st.number_input("Peso/volume (kg)", min_value=0.1, value=5.0, step=0.5)
         submitted = st.form_submit_button("Adicionar entrega")
@@ -88,7 +88,7 @@ def render_sidebar_setup() -> None:
             if coords:
                 delivery_type = (
                     DeliveryType.CRITICAL_MEDICATION
-                    if delivery_type_label == "Medicamento critico"
+                    if delivery_type_label == "Medicamento crítico"
                     else DeliveryType.REGULAR_SUPPLY
                 )
                 new_delivery = Delivery(
@@ -103,17 +103,17 @@ def render_sidebar_setup() -> None:
                 st.sidebar.success(f"Entrega '{address}' adicionada!")
 
     st.sidebar.divider()
-    st.sidebar.header("3. Configurar veiculos")
-    num_vehicles = st.sidebar.number_input("Numero de veiculos", min_value=1, max_value=20, value=2)
-    default_capacity = st.sidebar.number_input("Capacidade de carga por veiculo (kg)", min_value=1.0, value=50.0)
-    default_range = st.sidebar.number_input("Autonomia maxima por veiculo (km)", min_value=1.0, value=100.0)
+    st.sidebar.header("3. Configurar veículos")
+    num_vehicles = st.sidebar.number_input("Número de veículos", min_value=1, max_value=20, value=2)
+    default_capacity = st.sidebar.number_input("Capacidade de carga por veículo (kg)", min_value=1.0, value=50.0)
+    default_range = st.sidebar.number_input("Autonomia máxima por veículo (km)", min_value=1.0, value=100.0)
 
-    if st.sidebar.button("Aplicar configuracao de veiculos", use_container_width=True):
+    if st.sidebar.button("Aplicar configuração de veículos", use_container_width=True):
         st.session_state["vehicles"] = [
             Vehicle(id=f"v{i}", capacity_kg=default_capacity, max_range_km=default_range)
             for i in range(int(num_vehicles))
         ]
-        st.sidebar.success(f"{int(num_vehicles)} veiculos configurados!")
+        st.sidebar.success(f"{int(num_vehicles)} veículos configurados!")
 
 
 def render_current_data() -> None:
@@ -128,8 +128,8 @@ def render_current_data() -> None:
                 [
                     {
                         "ID": d.id,
-                        "Endereco": d.address,
-                        "Tipo": "Critico" if d.is_critical else "Regular",
+                        "Endereço": d.address,
+                        "Tipo": "Crítico" if d.is_critical else "Regular",
                         "Peso (kg)": d.weight_kg,
                     }
                     for d in deliveries
@@ -141,7 +141,7 @@ def render_current_data() -> None:
             st.info("Nenhuma entrega cadastrada ainda.")
 
     with col2:
-        st.markdown("**Veiculos**")
+        st.markdown("**Veículos**")
         vehicles = st.session_state["vehicles"]
         if vehicles:
             st.dataframe(
@@ -153,26 +153,26 @@ def render_current_data() -> None:
                 hide_index=True,
             )
         else:
-            st.info("Nenhum veiculo configurado ainda.")
+            st.info("Nenhum veículo configurado ainda.")
 
 
 def render_optimization_panel() -> None:
-    st.subheader("Otimizacao das rotas (Algoritmo Genetico)")
+    st.subheader("Otimização das rotas (Algoritmo Genético)")
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        population_size = st.number_input("Tamanho da populacao", min_value=10, max_value=500, value=80)
+        population_size = st.number_input("Tamanho da população", min_value=10, max_value=500, value=80)
     with col2:
-        num_generations = st.number_input("Numero de geracoes", min_value=10, max_value=1000, value=150)
+        num_generations = st.number_input("Número de gerações", min_value=10, max_value=1000, value=150)
     with col3:
-        mutation_rate = st.slider("Taxa de mutacao", min_value=0.0, max_value=1.0, value=0.15)
+        mutation_rate = st.slider("Taxa de mutação", min_value=0.0, max_value=1.0, value=0.15)
 
     can_run = bool(
         st.session_state["deliveries"] and st.session_state["vehicles"] and st.session_state["depot"]
     )
 
     if not can_run:
-        st.warning("Cadastre ao menos uma entrega, um veiculo e defina o deposito antes de otimizar.")
+        st.warning("Cadastre ao menos uma entrega, um veículo e defina o depósito antes de otimizar.")
 
     if st.button("Otimizar rotas", type="primary", disabled=not can_run):
         problem = RoutingProblem(
@@ -191,17 +191,17 @@ def render_optimization_panel() -> None:
             num_generations=int(num_generations),
             mutation_rate=float(mutation_rate),
         )
-        with st.spinner("Executando Algoritmo Genetico..."):
+        with st.spinner("Executando Algoritmo Genético..."):
             ga = GeneticAlgorithm(problem, config)
             result = ga.run()
 
         st.session_state["ga_result"] = result
         st.session_state["problem"] = problem
-        st.success(f"Otimizacao concluida! Fitness final: {result.best_fitness:.2f}")
+        st.success(f"Otimização concluída! Fitness final: {result.best_fitness:.2f}")
 
 
 def _compute_random_baseline_distance(problem: RoutingProblem) -> float:
-    """Distancia total de uma rota aleatoria (nao otimizada), para comparacao."""
+    """Distância total de uma rota aleatória (não otimizada), para comparação."""
     rng = random.Random(0)
     chromosome = create_random_chromosome(len(problem.deliveries), rng=rng)
     from app.genetic.fitness import decode_chromosome
@@ -216,15 +216,15 @@ def render_results() -> None:
     if not result or not problem:
         return
 
-    st.subheader("Resultado da otimizacao")
+    st.subheader("Resultado da otimização")
 
     depot_coords = problem.depot.coordinates
     total_distance = sum(r.distance_km(depot_coords) for r in result.best_routes)
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("Distancia total", f"{total_distance:.1f} km")
-    col2.metric("Veiculos utilizados", sum(1 for r in result.best_routes if r.deliveries))
-    col3.metric("Tempo de otimizacao", f"{result.elapsed_seconds:.2f} s")
+    col1.metric("Distância total", f"{total_distance:.1f} km")
+    col2.metric("Veículos utilizados", sum(1 for r in result.best_routes if r.deliveries))
+    col3.metric("Tempo de otimização", f"{result.elapsed_seconds:.2f} s")
 
     route_map = build_route_map(result.best_routes, problem.depot)
     st_folium(route_map, width=None, height=500)
@@ -238,30 +238,30 @@ def render_llm_panel(result, problem: RoutingProblem, total_distance: float) -> 
 
     if not os.getenv("ANTHROPIC_API_KEY"):
         st.info(
-            "Defina ANTHROPIC_API_KEY no arquivo .env para habilitar instrucoes, "
-            "relatorios e perguntas em linguagem natural via Claude."
+            "Defina ANTHROPIC_API_KEY no arquivo .env para habilitar instruções, "
+            "relatórios e perguntas em linguagem natural via Claude."
         )
         return
 
     client = ClaudeClient()
-    tab1, tab2, tab3 = st.tabs(["Instrucoes por motorista", "Relatorio de eficiencia", "Perguntas sobre as rotas"])
+    tab1, tab2, tab3 = st.tabs(["Instruções por motorista", "Relatório de eficiência", "Perguntas sobre as rotas"])
 
     with tab1:
         active_routes = [r for r in result.best_routes if r.deliveries]
         if active_routes:
             vehicle_labels = [r.vehicle.label for r in active_routes]
-            selected_label = st.selectbox("Selecione o veiculo", vehicle_labels)
+            selected_label = st.selectbox("Selecione o veículo", vehicle_labels)
             selected_route = next(r for r in active_routes if r.vehicle.label == selected_label)
-            if st.button("Gerar instrucoes"):
+            if st.button("Gerar instruções"):
                 try:
-                    with st.spinner("Gerando instrucoes com Claude..."):
+                    with st.spinner("Gerando instruções com Claude..."):
                         instructions = client.generate_driver_instructions(selected_route, problem.depot)
                     st.markdown(instructions)
                 except ClaudeClientError as error:
                     st.error(str(error))
 
     with tab2:
-        if st.button("Gerar relatorio de eficiencia"):
+        if st.button("Gerar relatório de eficiência"):
             baseline_distance = _compute_random_baseline_distance(problem)
             metrics = RouteEfficiencyMetrics(
                 total_distance_km=total_distance,
@@ -269,17 +269,17 @@ def render_llm_panel(result, problem: RoutingProblem, total_distance: float) -> 
                 num_vehicles_used=sum(1 for r in result.best_routes if r.deliveries),
                 num_deliveries=len(problem.deliveries),
                 num_critical_deliveries=sum(1 for d in problem.deliveries if d.is_critical),
-                estimated_time_hours=total_distance / 40.0,  # estimativa: 40km/h media
+                estimated_time_hours=total_distance / 40.0,  # estimativa: 40km/h média
             )
             try:
-                with st.spinner("Gerando relatorio com Claude..."):
+                with st.spinner("Gerando relatório com Claude..."):
                     report = client.generate_efficiency_report(metrics)
                 st.markdown(report)
             except ClaudeClientError as error:
                 st.error(str(error))
 
     with tab3:
-        question = st.text_input("Pergunte algo sobre as rotas (ex.: 'qual entrega e mais urgente?')")
+        question = st.text_input("Pergunte algo sobre as rotas (ex.: 'qual entrega é mais urgente?')")
         if st.button("Perguntar") and question:
             try:
                 with st.spinner("Consultando Claude..."):
@@ -298,7 +298,7 @@ def render_llm_panel(result, problem: RoutingProblem, total_distance: float) -> 
 def main() -> None:
     _init_session_state()
     st.title("🚑 MedRoutes")
-    st.caption("Otimizacao de rotas para distribuicao de medicamentos e insumos")
+    st.caption("Otimização de rotas para distribuição de medicamentos e insumos")
 
     render_sidebar_setup()
     render_current_data()

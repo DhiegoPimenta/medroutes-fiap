@@ -1,14 +1,14 @@
 """
-Operadores geneticos implementados do zero (sem bibliotecas de AG prontas).
+Operadores genéticos implementados do zero (sem bibliotecas de AG prontas).
 
 Todos os operadores trabalham sobre cromossomos representados como
-permutacoes (listas de inteiros, cada inteiro = indice de uma entrega).
+permutações (listas de inteiros, cada inteiro = índice de uma entrega).
 
 Operadores implementados:
-    - tournament_selection: selecao por torneio.
+    - tournament_selection: seleção por torneio.
     - order_crossover: crossover OX (Order Crossover), adequado para
-      permutacoes pois preserva a ordem relativa dos genes sem duplicatas.
-    - inversion_mutation: mutacao por inversao de um subtrecho do cromossomo.
+      permutações pois preserva a ordem relativa dos genes sem duplicatas.
+    - inversion_mutation: mutação por inversão de um subtrecho do cromossomo.
 """
 
 from __future__ import annotations
@@ -25,11 +25,11 @@ def tournament_selection(
     tournament_size: int = 3,
     rng: random.Random | None = None,
 ) -> Chromosome:
-    """Seleciona um individuo via torneio.
+    """Seleciona um indivíduo via torneio.
 
-    Sorteia `tournament_size` individuos aleatoriamente da populacao e
-    retorna o de menor fitness (problema de minimizacao). Quanto maior o
-    `tournament_size`, maior a pressao seletiva (menos diversidade).
+    Sorteia `tournament_size` indivíduos aleatoriamente da população e
+    retorna o de menor fitness (problema de minimização). Quanto maior o
+    `tournament_size`, maior a pressão seletiva (menos diversidade).
     """
     rng = rng or random.Random()
     if tournament_size < 1:
@@ -45,18 +45,18 @@ def order_crossover(
     parent_b: Chromosome,
     rng: random.Random | None = None,
 ) -> Chromosome:
-    """Crossover OX (Order Crossover) para permutacoes.
+    """Crossover OX (Order Crossover) para permutações.
 
     Passos:
     1. Sorteia dois pontos de corte [start, end] em parent_a.
     2. Copia o segmento [start, end] de parent_a diretamente para o filho,
-       preservando posicoes.
-    3. Preenche as posicoes restantes do filho com os genes de parent_b,
-       na ordem em que aparecem em parent_b, pulando os genes que ja
+       preservando posições.
+    3. Preenche as posições restantes do filho com os genes de parent_b,
+       na ordem em que aparecem em parent_b, pulando os genes que já
        foram copiados do segmento de parent_a.
 
-    Isso garante que o filho seja uma permutacao valida (sem repeticoes e
-    sem omissoes), preservando a ordem relativa herdada de ambos os pais.
+    Isso garante que o filho seja uma permutação válida (sem repetições e
+    sem omissões), preservando a ordem relativa herdada de ambos os pais.
     """
     rng = rng or random.Random()
     size = len(parent_a)
@@ -84,11 +84,11 @@ def inversion_mutation(
     mutation_rate: float,
     rng: random.Random | None = None,
 ) -> Chromosome:
-    """Mutacao por inversao: com probabilidade `mutation_rate`, inverte um
-    subtrecho aleatorio do cromossomo.
+    """Mutação por inversão: com probabilidade `mutation_rate`, inverte um
+    subtrecho aleatório do cromossomo.
 
-    A inversao preserva a validade da permutacao (mesmos genes, ordem
-    parcialmente alterada), introduzindo diversidade sem violar restricoes
+    A inversão preserva a validade da permutação (mesmos genes, ordem
+    parcialmente alterada), introduzindo diversidade sem violar restrições
     estruturais do cromossomo.
     """
     rng = rng or random.Random()
@@ -109,7 +109,7 @@ def inversion_mutation(
 
 
 def create_random_chromosome(num_genes: int, rng: random.Random | None = None) -> Chromosome:
-    """Cria um cromossomo aleatorio: uma permutacao de [0, num_genes)."""
+    """Cria um cromossomo aleatório: uma permutação de [0, num_genes)."""
     rng = rng or random.Random()
     genes = list(range(num_genes))
     rng.shuffle(genes)

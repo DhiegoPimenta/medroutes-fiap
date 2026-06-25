@@ -1,8 +1,13 @@
 [tool.poetry]
 name = "medroutes"
 version = "0.1.0"
-description = "Sistema de otimizacao de rotas para distribuicao de medicamentos e insumos usando Algoritmo Genetico, Streamlit, Folium e Claude API"
-authors = ["Dhiego Pimenta <dhiegopimenta@gmail.com>"]
+description = "Sistema de otimização de rotas para distribuição de medicamentos e insumos usando Algoritmo Genético, Streamlit, Folium e Claude API"
+authors = [
+    "Dhiego Pimenta <dhiegopimenta@gmail.com>",
+    "Rafael Cardoso de Oliveira <rafaa.cardoso@gmail.com>",
+    "Integrante 3 - RMxxxxxx <email@exemplo.com>",
+    "Integrante 4 - RMxxxxxx <email@exemplo.com>",
+]
 readme = "README.md"
 packages = [{ include = "app" }]
 
@@ -22,6 +27,7 @@ pydantic = "^2.8.2"
 pytest = "^8.3.2"
 pytest-mock = "^3.14.0"
 pytest-cov = "^5.0.0"
+markdown = "^3.6"
 
 [build-system]
 requires = ["poetry-core"]

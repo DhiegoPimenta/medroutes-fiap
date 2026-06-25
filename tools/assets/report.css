@@ -1,0 +1,180 @@
+/* ----------------------------------------------------------------------- *
+ * Estilo de impressão do Relatório Técnico do MedRoutes.
+ * Pensado para conversão HTML -> PDF via Chrome headless (regras @page).
+ * ----------------------------------------------------------------------- */
+
+:root {
+  --azul: #1d4ed8;
+  --azul-escuro: #1e3a8a;
+  --vermelho: #dc2626;
+  --cinza-texto: #1f2937;
+  --cinza-claro: #6b7280;
+  --borda: #d1d5db;
+  --fundo-suave: #f3f4f6;
+}
+
+@page {
+  size: A4;
+  margin: 20mm 18mm;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--cinza-texto);
+  font-size: 11pt;
+  line-height: 1.55;
+  margin: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* ----------------------------- Capa ----------------------------------- */
+.cover {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 252mm;            /* ~altura útil de uma página A4 */
+  text-align: center;
+  page-break-after: always;
+  border-top: 8px solid var(--azul);
+  border-bottom: 8px solid var(--vermelho);
+}
+
+.cover h1 {
+  font-size: 46pt;
+  margin: 0 0 4pt;
+  border: none;
+  color: var(--azul-escuro);
+}
+
+.cover h2 {
+  font-size: 19pt;
+  color: var(--cinza-texto);
+  border: none;
+  margin: 8pt 0;
+}
+
+.cover h3 {
+  font-size: 13pt;
+  font-weight: 600;
+  color: var(--vermelho);
+  margin: 4pt 0 18pt;
+}
+
+.cover p { color: var(--cinza-claro); margin: 3pt 0; font-size: 10.5pt; }
+.cover strong { color: var(--cinza-texto); }
+
+.cover table {
+  width: 70%;
+  margin: 12pt auto 18pt;
+  font-size: 10.5pt;
+}
+
+.cover code {
+  background: none;
+  color: var(--azul);
+  font-size: 9.5pt;
+}
+
+/* --------------------------- Tipografia ------------------------------- */
+h1, h2, h3, h4 { color: var(--azul-escuro); line-height: 1.25; }
+
+h2 {
+  font-size: 17pt;
+  margin-top: 22pt;
+  padding-bottom: 4pt;
+  border-bottom: 2px solid var(--azul);
+  page-break-after: avoid;
+}
+
+h3 {
+  font-size: 13pt;
+  margin-top: 16pt;
+  color: var(--azul);
+  page-break-after: avoid;
+}
+
+p { margin: 7pt 0; text-align: justify; }
+
+strong { color: var(--azul-escuro); }
+
+a { color: var(--azul); text-decoration: none; }
+
+/* ----------------------------- Tabelas -------------------------------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12pt 0;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+
+th {
+  background: var(--azul);
+  color: #fff;
+  text-align: left;
+  padding: 6pt 8pt;
+  font-weight: 600;
+}
+
+td {
+  border: 1px solid var(--borda);
+  padding: 5pt 8pt;
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) { background: var(--fundo-suave); }
+
+/* ------------------------------ Código -------------------------------- */
+code {
+  font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  background: var(--fundo-suave);
+  padding: 1pt 4pt;
+  border-radius: 3px;
+  font-size: 9.5pt;
+  color: var(--vermelho);
+}
+
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12pt 14pt;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 9pt;
+  line-height: 1.45;
+  page-break-inside: avoid;
+}
+
+pre code { background: none; color: inherit; padding: 0; }
+
+/* ----------------------------- Imagens -------------------------------- */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 14pt auto;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  page-break-inside: avoid;
+}
+
+/* ----------------------------- Diversos ------------------------------- */
+hr {
+  border: none;
+  border-top: 1px solid var(--borda);
+  margin: 18pt 0;
+}
+
+blockquote {
+  border-left: 3px solid var(--azul);
+  margin: 10pt 0;
+  padding: 2pt 12pt;
+  color: var(--cinza-claro);
+  font-style: italic;
+}
+
+ul, ol { margin: 7pt 0; padding-left: 20pt; }
+li { margin: 3pt 0; }
