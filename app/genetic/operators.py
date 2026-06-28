@@ -63,6 +63,9 @@ def order_crossover(
     if size != len(parent_b):
         raise ValueError("parent_a e parent_b devem ter o mesmo tamanho")
 
+    if size < 2:
+        return list(parent_a)
+
     start, end = sorted(rng.sample(range(size), 2))
 
     child: list[int | None] = [None] * size

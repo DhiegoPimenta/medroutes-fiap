@@ -71,3 +71,9 @@ def test_inversion_mutation_changes_order_when_applied():
     mutated = inversion_mutation(chromosome, mutation_rate=1.0, rng=random.Random(5))
     assert mutated != chromosome
     assert sorted(mutated) == sorted(chromosome)
+
+
+def test_order_crossover_single_gene_returns_copy_of_parent_a():
+    # Reproduz o bug: 1 entrega → cromossomo de tamanho 1 → sample(range(1), 2) falhava
+    child = order_crossover([0], [0], rng=random.Random(0))
+    assert child == [0]

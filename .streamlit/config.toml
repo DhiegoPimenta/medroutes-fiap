@@ -1,0 +1,13 @@
+# Tema do MedRoutes — dark mode com accent da marca (--azul #1d4ed8).
+# Neutros escuros para fundo/superfícies; azul preservado como cor primária.
+
+[theme]
+base = "dark"
+primaryColor = "#1d4ed8"             # --azul (CTAs, destaques)
+backgroundColor = "#0e1117"          # área principal (dark)
+secondaryBackgroundColor = "#1a1f2b" # sidebar, cards, inputs (dark)
+textColor = "#e5e7eb"                # texto claro para contraste WCAG AA
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
