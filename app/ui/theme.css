@@ -1,0 +1,325 @@
+/* ===================================================================== *
+ * MedRoutes — refinamento visual de produção (injetado via st.markdown).
+ * Dark mode. Accent da marca (--azul) preservado; neutros adaptados ao
+ * fundo escuro para contraste WCAG AA.
+ * ===================================================================== */
+
+:root {
+  /* Accents da marca (paleta oficial — hex preservados) */
+  --azul: #1d4ed8;
+  --azul-escuro: #1e3a8a;
+  --vermelho: #dc2626;
+
+  /* Tom claro de azul p/ texto/headings sobre fundo escuro (legibilidade) */
+  --azul-claro: #60a5fa;
+
+  /* Neutros dark */
+  --texto: #e5e7eb;
+  --texto-suave: #9ca3af;
+  --borda: #374151;
+  --surface: #1a1f2b;
+  --surface-2: #232a38;
+  --fundo: #0e1117;
+
+  --raio: 10px;
+  --raio-sm: 8px;
+  --sombra-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --sombra-lg: 0 8px 24px rgba(29, 78, 216, 0.35);
+  --transicao: 180ms ease-out;
+}
+
+/* ----------------------------- Tipografia ----------------------------- */
+html, body, [class*="css"] {
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.stApp h1, .stApp h2, .stApp h3, .stApp h4 {
+  color: var(--texto);
+  letter-spacing: -0.01em;
+}
+
+/* Subheaders das seções principais com linha accent azul */
+[data-testid="stHeading"] h2,
+.stApp [data-testid="stMarkdownContainer"] h2 {
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--borda);
+  position: relative;
+}
+[data-testid="stHeading"] h2::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 56px;
+  height: 2px;
+  background: var(--azul-claro);
+}
+
+/* Espaçamento vertical uniforme entre blocos principais */
+.block-container {
+  padding-top: 2.2rem;
+  max-width: 1320px;
+}
+
+/* ------------------------------- Hero --------------------------------- */
+.medroutes-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  margin-bottom: 8px;
+  border-radius: var(--raio);
+  background: linear-gradient(100deg, var(--azul-escuro) 0%, var(--azul) 100%);
+  box-shadow: var(--sombra-md);
+  animation: fadeInUp 320ms ease-out;
+}
+.medroutes-hero__icon {
+  font-size: 2.6rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+.medroutes-hero__title {
+  margin: 0;
+  color: #fff !important;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.medroutes-hero__subtitle {
+  margin: 2px 0 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+}
+
+/* ----------------------- Stepper da sidebar --------------------------- */
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 10px;
+}
+.step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--azul);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: var(--sombra-sm);
+}
+.step-title {
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--texto);
+  line-height: 1.2;
+}
+
+/* ------------------------------ Botões -------------------------------- */
+.stButton > button,
+.stFormSubmitButton > button,
+.stDownloadButton > button {
+  border-radius: var(--raio-sm);
+  font-weight: 600;
+  transition: transform var(--transicao), box-shadow var(--transicao),
+              background-color var(--transicao), border-color var(--transicao);
+}
+.stButton > button:hover,
+.stFormSubmitButton > button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--sombra-md);
+}
+.stButton > button:active,
+.stFormSubmitButton > button:active {
+  transform: translateY(0);
+  box-shadow: var(--sombra-sm);
+}
+.stButton > button[kind="primary"],
+.stFormSubmitButton > button[kind="primary"] {
+  box-shadow: var(--sombra-sm);
+}
+.stButton > button[kind="primary"]:hover,
+.stFormSubmitButton > button[kind="primary"]:hover {
+  box-shadow: var(--sombra-lg);
+}
+.stButton > button:disabled,
+.stFormSubmitButton > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ------------------------- Inputs e selects --------------------------- */
+.stTextInput input,
+.stNumberInput input,
+.stSelectbox div[data-baseweb="select"] > div {
+  border-radius: var(--raio-sm);
+  transition: border-color var(--transicao), box-shadow var(--transicao);
+}
+.stTextInput input:focus,
+.stNumberInput input:focus {
+  border-color: var(--azul-claro);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
+}
+
+/* ------------------------------ Métricas ------------------------------ */
+[data-testid="stMetric"] {
+  background: var(--surface);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 14px 16px;
+  box-shadow: var(--sombra-sm);
+  transition: transform var(--transicao), box-shadow var(--transicao);
+  animation: fadeInUp 360ms ease-out both;
+}
+[data-testid="stMetric"]:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-md);
+}
+[data-testid="stMetricValue"] {
+  color: var(--azul-claro);
+  font-weight: 700;
+}
+
+/* ------------------------------ Tabelas ------------------------------- */
+[data-testid="stDataFrame"] {
+  border-radius: var(--raio);
+  overflow: hidden;
+  box-shadow: var(--sombra-sm);
+}
+
+/* ----------------------------- Expanders ------------------------------ */
+[data-testid="stExpander"] {
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra-sm);
+  transition: box-shadow var(--transicao);
+  overflow: hidden;
+}
+[data-testid="stExpander"]:hover {
+  box-shadow: var(--sombra-md);
+}
+[data-testid="stExpander"] summary {
+  font-weight: 600;
+  transition: color var(--transicao);
+}
+[data-testid="stExpander"] summary:hover {
+  color: var(--azul-claro);
+}
+
+/* -------------------------------- Tabs -------------------------------- */
+.stTabs [data-baseweb="tab-list"] {
+  gap: 4px;
+  border-bottom: 1px solid var(--borda);
+}
+.stTabs [data-baseweb="tab"] {
+  transition: color var(--transicao), background-color var(--transicao);
+  border-radius: var(--raio-sm) var(--raio-sm) 0 0;
+}
+.stTabs [data-baseweb="tab"]:hover {
+  color: var(--azul-claro);
+  background: var(--surface-2);
+}
+.stTabs [aria-selected="true"] {
+  color: var(--azul-claro) !important;
+}
+.stTabs [data-baseweb="tab-highlight"] {
+  background-color: var(--azul-claro) !important;
+  transition: all 220ms ease-out;
+}
+
+/* ----------------------- Alertas (info/warn/ok) ----------------------- */
+[data-testid="stAlert"] {
+  border-radius: var(--raio-sm);
+  border-left: 4px solid var(--texto-suave);
+  box-shadow: var(--sombra-sm);
+  animation: fadeInUp 240ms ease-out;
+}
+[data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]) { border-left-color: #22c55e; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentInfo"])    { border-left-color: var(--azul-claro); }
+[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]) { border-left-color: #f59e0b; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentError"])   { border-left-color: var(--vermelho); }
+
+/* ----------------------------- Chat Q&A ------------------------------- */
+[data-testid="stChatMessage"] {
+  border-radius: var(--raio);
+  box-shadow: var(--sombra-sm);
+  animation: fadeInUp 240ms ease-out;
+}
+
+/* ------------------------------- Mapa --------------------------------- */
+.map-label {
+  font-weight: 600;
+  color: var(--texto);
+  margin: 4px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.map-label::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--azul-claro);
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.2);
+}
+iframe[title^="st_folium"],
+[data-testid="stCustomComponentV1"] iframe {
+  border-radius: var(--raio);
+  box-shadow: var(--sombra-md);
+  border: 1px solid var(--borda);
+}
+
+/* ------------------------------ Sidebar ------------------------------- */
+[data-testid="stSidebar"] {
+  border-right: 1px solid var(--borda);
+}
+[data-testid="stSidebar"] hr {
+  margin: 14px 0;
+  border-color: var(--borda);
+}
+
+/* ------------------------------ Spinner ------------------------------- */
+[data-testid="stSpinner"] {
+  color: var(--azul-claro);
+  font-weight: 500;
+}
+
+/* ----------------------------- Animações ------------------------------ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ------------------- Acessibilidade: foco visível --------------------- */
+.stButton > button:focus-visible,
+.stFormSubmitButton > button:focus-visible,
+.stTextInput input:focus-visible,
+.stNumberInput input:focus-visible {
+  outline: 2px solid var(--azul-claro);
+  outline-offset: 2px;
+}
+
+/* ------------------- Respeitar prefers-reduced-motion ----------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  .medroutes-hero,
+  [data-testid="stMetric"],
+  [data-testid="stAlert"],
+  [data-testid="stChatMessage"] {
+    animation: none !important;
+    transition: none !important;
+  }
+  .stButton > button:hover,
+  .stFormSubmitButton > button:hover,
+  [data-testid="stMetric"]:hover {
+    transform: none !important;
+  }
+}

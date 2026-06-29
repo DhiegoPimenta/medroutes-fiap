@@ -17,7 +17,7 @@ Sistema completo de otimização de rotas para distribuição de medicamentos e 
 |---|---|
 | Dhiego Pimenta | RMxxxxxx |
 | Rafael Cardoso de Oliveira | RM373129 |
-| _Integrante 3_ | _RMxxxxxx_ |
+| Victor Sousa | RM372583 |
 | _Integrante 4_ | _RMxxxxxx_ |
 
 > Preencher os RMs e adicionar/remover linhas conforme a composição final do grupo.

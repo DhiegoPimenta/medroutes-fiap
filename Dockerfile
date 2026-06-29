@@ -27,6 +27,9 @@ RUN poetry install --no-root --only main
 # copia o restante do código da aplicação
 COPY app/ ./app/
 
+# tema do Streamlit (paleta da marca); app/ui/theme.css já vem em COPY app/
+COPY .streamlit/ ./.streamlit/
+
 # usuário não-root por segurança (boas práticas de containers em produção)
 RUN useradd --create-home --shell /bin/bash medroutes \
     && chown -R medroutes:medroutes /app
